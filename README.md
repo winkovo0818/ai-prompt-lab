@@ -159,66 +159,47 @@ npm run dev
 
 ## 📸 界面预览
 
-<details>
-<summary>点击展开查看截图 👇</summary>
-
-<br/>
+> 💡 提示：点击图片可查看原图获得更清晰的效果
 
 ### 🔐 登录页面
 现代化的登录界面，支持注册和登录
 
-<img src="img/login.png" alt="登录页面" width="800"/>
-
----
+<a href="img/login.png" target="_blank"><img src="img/login.png" alt="登录页面"/></a>
 
 ### 📝 Prompt 列表
 管理所有 Prompt，支持搜索、筛选、收藏
 
-<img src="img/prompt.png" alt="Prompt 列表" width="800"/>
-
----
+<a href="img/prompt.png" target="_blank"><img src="img/prompt.png" alt="Prompt 列表"/></a>
 
 ### 🧪 A/B 测试
 对比两个 Prompt 的效果，支持批量测试
 
-<img src="img/abtest.png" alt="A/B 测试" width="800"/>
-
----
+<a href="img/abtest.png" target="_blank"><img src="img/abtest.png" alt="A/B 测试"/></a>
 
 ### 📊 测试对比结果
 直观展示两个 Prompt 的对比结果
 
-<img src="img/compare.png" alt="测试对比" width="800"/>
-
----
+<a href="img/compare.png" target="_blank"><img src="img/compare.png" alt="测试对比"/></a>
 
 ### 📜 执行历史
 查看所有 Prompt 执行历史记录
 
-<img src="img/history.png" alt="执行历史" width="800"/>
-
----
+<a href="img/history.png" target="_blank"><img src="img/history.png" alt="执行历史"/></a>
 
 ### 📋 历史详情
 查看单次执行的详细信息
 
-<img src="img/do_history.png" alt="历史详情" width="800"/>
-
----
+<a href="img/do_history.png" target="_blank"><img src="img/do_history.png" alt="历史详情"/></a>
 
 ### ⚙️ API 配置管理
 管理多个 AI 配置，支持全局配置和个人配置
 
-<img src="img/api.png" alt="API 配置" width="800"/>
-
----
+<a href="img/api.png" target="_blank"><img src="img/api.png" alt="API 配置"/></a>
 
 ### 👥 用户管理（管理员）
 管理员可以管理所有用户和权限
 
-<img src="img/manager.png" alt="用户管理" width="800"/>
-
-</details>
+<a href="img/manager.png" target="_blank"><img src="img/manager.png" alt="用户管理"/></a>
 
 ---
 
