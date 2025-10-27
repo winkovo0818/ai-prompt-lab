@@ -1,0 +1,62 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形渐变 -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="flaskGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#10B981;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景圆 -->
+  <circle cx="100" cy="100" r="95" fill="url(#bgGradient)"/>
+  
+  <!-- 实验室烧杯主体 -->
+  <g transform="translate(100, 100)">
+    <!-- 烧杯轮廓 -->
+    <path d="M-25 -50 L25 -50 L35 30 Q35 45 0 45 Q-35 45 -35 30 Z" 
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="4" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+    
+    <!-- 烧杯液体 -->
+    <path d="M-24 -20 L24 -20 L32 30 Q32 42 0 42 Q-32 42 -32 30 Z" 
+          fill="url(#flaskGradient)" 
+          opacity="0.6"/>
+    
+    <!-- AI 文字 -->
+    <text x="0" y="5" 
+          font-family="Arial, sans-serif" 
+          font-size="32" 
+          font-weight="bold"
+          fill="#FFFFFF" 
+          text-anchor="middle">AI</text>
+    
+    <!-- 代码括号装饰 -->
+    <g opacity="0.8">
+      <!-- 左括号 -->
+      <path d="M-45 -25 Q-50 -15 -50 0 Q-50 15 -45 25" 
+            fill="none" 
+            stroke="#10B981" 
+            stroke-width="3" 
+            stroke-linecap="round"/>
+      <!-- 右括号 -->
+      <path d="M45 -25 Q50 -15 50 0 Q50 15 45 25" 
+            fill="none" 
+            stroke="#10B981" 
+            stroke-width="3" 
+            stroke-linecap="round"/>
+    </g>
+    
+    <!-- 气泡效果 -->
+    <circle cx="-15" cy="-5" r="3" fill="#FFFFFF" opacity="0.5"/>
+    <circle cx="10" cy="15" r="2" fill="#FFFFFF" opacity="0.6"/>
+    <circle cx="-8" cy="20" r="2.5" fill="#FFFFFF" opacity="0.4"/>
+  </g>
+</svg>
+
