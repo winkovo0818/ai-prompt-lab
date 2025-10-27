@@ -490,9 +490,10 @@ npm run build
 
 ## 技术支持
 
-- 📧 邮箱: support@aipromptlab.com
-- 📖 文档: https://docs.aipromptlab.com
-- 🐛 问题反馈: https://github.com/your-repo/issues
+- 👤 作者: 云淡风轻
+- 💬 QQ: 1026771081
+- 🐛 问题反馈: https://github.com/winkovo0818/ai-prompt-lab/issues
+- 🌐 项目地址: https://github.com/winkovo0818/ai-prompt-lab
 
 ---
 
