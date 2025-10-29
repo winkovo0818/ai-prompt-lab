@@ -121,7 +121,7 @@ AI Prompt Lab 帮助开发者和 AI 工程师：
 
 - **Node.js** >= 16
 - **Python** >= 3.8
-- **SQLite** 3 或 MySQL/PostgreSQL
+- **MySQL** >= 5.7
 
 ### ⚡ 一键部署
 
@@ -130,19 +130,23 @@ AI Prompt Lab 帮助开发者和 AI 工程师：
 git clone https://github.com/winkovo0818/ai-prompt-lab.git
 cd ai-prompt-lab
 
-# 2. 初始化数据库
+# 2. 创建 MySQL 数据库
+mysql -u root -p -e "CREATE DATABASE prompt_lab CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 3. 初始化数据库
 cd backend
-sqlite3 prompt.db < init_database.sql
+mysql -u root -p prompt_lab < init_database.sql
 
-# 3. 配置环境变量
+# 4. 配置环境变量
 cp env_example.txt .env
-# 编辑 .env 文件，设置密钥和 CORS
+# 编辑 .env 文件，设置数据库连接、密钥和 CORS
+# DATABASE_URL=mysql+pymysql://root:password@localhost:3306/prompt_lab
 
-# 4. 启动后端
+# 5. 启动后端
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 
-# 5. 启动前端（新终端）
+# 6. 启动前端（新终端）
 cd frontend
 npm install
 npm run dev
@@ -221,7 +225,7 @@ Vue 3 + TypeScript + Vite
 ```
 FastAPI + Python 3.8+
 ├─ ORM: SQLModel
-├─ 数据库: SQLite / MySQL / PostgreSQL
+├─ 数据库: MySQL 5.7+
 ├─ 认证: JWT
 ├─ 加密: Cryptography
 └─ 服务器: Uvicorn
@@ -307,7 +311,7 @@ ai-prompt-lab/
 
 ```env
 # 数据库配置
-DATABASE_URL=sqlite:///./prompt.db
+DATABASE_URL=mysql+pymysql://root:your_password@localhost:3306/prompt_lab
 
 # 安全密钥（请使用强随机字符串）
 SECRET_KEY=your-secret-key-min-32-chars
@@ -470,14 +474,14 @@ docker run -d -p 8000:8000 -p 5173:5173 ai-prompt-lab
 </details>
 
 <details>
-<summary><b>如何导出数据？</b></summary>
+<summary><b>如何备份数据？</b></summary>
 
 ```bash
-# 备份数据库
-sqlite3 prompt.db ".backup backup.db"
+# 备份 MySQL 数据库
+mysqldump -u root -p prompt_lab > backup.sql
 
-# 导出 SQL
-sqlite3 prompt.db .dump > backup.sql
+# 恢复数据库
+mysql -u root -p prompt_lab < backup.sql
 ```
 
 </details>
