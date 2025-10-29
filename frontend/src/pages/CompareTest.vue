@@ -63,9 +63,10 @@
           </el-form-item>
 
           <el-form-item label="变量配置">
-            <VariableInput
+            <VariableInputWithFile
               :variables="allVariables"
               v-model="testConfig.input_variables"
+              v-model:file-model-value="testConfig.file_variables"
             />
           </el-form-item>
 
@@ -137,7 +138,37 @@
           </div>
         </div>
 
-        <div v-else-if="testResults" class="results-grid">
+        <div v-else-if="testResults">
+          <!-- 测试参数信息 -->
+          <div class="test-params-box">
+            <div class="params-header">
+              <el-icon><Setting /></el-icon>
+              <span>测试参数</span>
+            </div>
+            <div class="params-content">
+              <div class="param-item">
+                <span class="param-label">测试名称：</span>
+                <span class="param-value">{{ testResults.test_name }}</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">AI 模型：</span>
+                <span class="param-value">{{ testResults.model || '默认模型' }}</span>
+              </div>
+              <div class="param-item">
+                <span class="param-label">测试时间：</span>
+                <span class="param-value">{{ formatDate(testResults.created_at) }}</span>
+              </div>
+              <div v-if="testResults.input_variables && Object.keys(testResults.input_variables).length > 0" class="param-item variables-item">
+                <span class="param-label">输入变量：</span>
+                <div class="variables-display">
+                  <pre>{{ JSON.stringify(testResults.input_variables, null, 2) }}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 测试结果卡片 -->
+          <div class="results-grid">
           <div
             v-for="(result, index) in testResults.results"
             :key="index"
@@ -315,6 +346,7 @@
             v-if="testResults.results.length === 0"
             description="暂无测试结果"
           />
+          </div>
         </div>
 
         <div v-else class="empty-state">
@@ -386,11 +418,10 @@ import { usePromptStore } from '@/store/prompt'
 import { useConfigStore } from '@/store/config'
 import { abtestAPI } from '@/api'
 import { extractVariables } from '@/utils/markdown'
-import { formatCost } from '@/utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Loading, Clock, Delete, CaretRight, RefreshLeft, Trophy, Document } from '@element-plus/icons-vue'
+import { Loading, Clock, Delete, CaretRight, RefreshLeft, Trophy, Document, Setting } from '@element-plus/icons-vue'
 import Header from '@/components/Layout/Header.vue'
-import VariableInput from '@/components/VariableInput.vue'
+import VariableInputWithFile from '@/components/VariableInputWithFile.vue'
 
 const promptStore = usePromptStore()
 const configStore = useConfigStore()
@@ -406,6 +437,7 @@ const testConfig = reactive({
   prompt_ids: [] as number[],
   aiConfigId: '',
   input_variables: {} as Record<string, string>,
+  file_variables: {} as Record<string, number>,
   enable_evaluation: true,
   generate_report: true
 })
@@ -478,13 +510,15 @@ async function handleRunTest() {
     console.log('开始运行AB测试，配置:', {
       test_name: testConfig.test_name,
       prompt_ids: testConfig.prompt_ids,
-      input_variables: testConfig.input_variables
+      input_variables: testConfig.input_variables,
+      file_variables: testConfig.file_variables
     })
 
     const response = await abtestAPI.create({
       test_name: testConfig.test_name,
       prompt_ids: testConfig.prompt_ids,
       input_variables: testConfig.input_variables,
+      file_variables: testConfig.file_variables,
       model: aiConfig.model,
       api_base_url: aiConfig.baseUrl,
       api_key: aiConfig.apiKey,
@@ -515,6 +549,7 @@ function resetForm() {
   testConfig.test_name = ''
   testConfig.prompt_ids = []
   testConfig.input_variables = {}
+  testConfig.file_variables = {}
   selectedPrompts.value = []
   testResults.value = null
   ElMessage.success('已重置配置')
@@ -614,7 +649,7 @@ async function viewComparisonReport() {
     ElMessageBox.alert(
       `
         <div style="text-align: left;">
-          <h3 style="margin-top: 0;">📊 对比分析报告</h3>
+          <h3 style="margin-top: 0;">对比分析报告</h3>
           
           <div style="background: #f0f9ff; padding: 12px; border-radius: 8px; margin: 12px 0;">
             <strong>📝 分析摘要：</strong>
@@ -642,7 +677,11 @@ async function viewComparisonReport() {
       {
         confirmButtonText: '关闭',
         dangerouslyUseHTMLString: true,
-        customClass: 'report-dialog'
+        customClass: 'report-dialog',
+        customStyle: {
+          width: '800px',
+          maxWidth: '90vw'
+        }
       }
     )
   } catch (error: any) {
@@ -660,6 +699,28 @@ async function viewComparisonReport() {
       ElMessage.error('加载报告失败')
     }
   }
+}
+
+// 辅助函数
+const formatCost = (cost: number): string => {
+  return `$${cost.toFixed(6)}`
+}
+
+const truncateText = (text: string, maxLength: number): string => {
+  if (!text) return ''
+  if (text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
+}
+
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 </script>
 
@@ -839,6 +900,82 @@ async function viewComparisonReport() {
   margin: 0;
 }
 
+/* 测试参数框 */
+.test-params-box {
+  background: white;
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.params-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #24292e;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.params-header .el-icon {
+  font-size: 1.1rem;
+  color: #0366d6;
+}
+
+.params-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+.param-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.param-item.variables-item {
+  grid-column: 1 / -1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.param-label {
+  color: #586069;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.param-value {
+  color: #24292e;
+  font-weight: 600;
+}
+
+.variables-display {
+  width: 100%;
+  background: #f6f8fa;
+  border: 1px solid #d1d5da;
+  border-radius: 6px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.variables-display pre {
+  margin: 0;
+  padding: 1rem;
+  font-family: 'Consolas', 'Monaco', 'SF Mono', 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: #24292e;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
@@ -1012,39 +1149,63 @@ async function viewComparisonReport() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 0.5rem;
 }
 
 .history-item {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-  transition: all 0.3s;
+  background: linear-gradient(to bottom, #ffffff, #fafbfc);
+  border: 1px solid #e1e4e8;
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.history-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #409eff, #66b1ff);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .history-item:hover {
   border-color: #409eff;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.history-item:hover::before {
+  opacity: 1;
 }
 
 .history-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .history-title {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  color: #303133;
-  margin: 0 0 0.25rem 0;
+  color: #24292e;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.01em;
 }
 
 .history-meta {
   font-size: 0.875rem;
-  color: #909399;
+  color: #6a737d;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .history-actions {
@@ -1055,29 +1216,42 @@ async function viewComparisonReport() {
 .history-summary {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #f0f0f0;
+  gap: 0.625rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e1e4e8;
 }
 
 .summary-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem;
-  background: #f9fafb;
-  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #f6f8fa 0%, #ffffff 100%);
+  border: 1px solid #e1e4e8;
+  border-radius: 8px;
   font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.summary-item:hover {
+  background: linear-gradient(135deg, #ffffff 0%, #f6f8fa 100%);
+  border-color: #c8e1ff;
+  transform: translateX(4px);
 }
 
 .summary-item .prompt-title {
-  color: #606266;
+  color: #24292e;
   flex: 1;
+  font-weight: 500;
 }
 
 .summary-item .response-time {
-  color: #909399;
-  font-weight: 500;
+  color: #0366d6;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.625rem;
+  background: #e8f4fd;
+  border-radius: 12px;
 }
 
 .option-hint {

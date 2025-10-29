@@ -184,6 +184,7 @@
         :total="total"
         :page-sizes="[12, 24, 48]"
         layout="total, sizes, prev, pager, next, jumper"
+        background
         @current-change="loadTemplates"
         @size-change="loadTemplates"
       />

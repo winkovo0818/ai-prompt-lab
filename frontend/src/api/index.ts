@@ -67,6 +67,7 @@ export interface RunPromptData {
   prompt_id?: number
   prompt_content?: string
   variables?: Record<string, string>
+  file_variables?: Record<string, number>
   model?: string
   temperature?: number
   max_tokens?: number
@@ -76,6 +77,7 @@ export interface ABTestData {
   test_name: string
   prompt_ids: number[]
   input_variables?: Record<string, string>
+  file_variables?: Record<string, number>
   model?: string
   api_base_url?: string
   api_key?: string
@@ -569,5 +571,25 @@ export const systemAPI = {
     response: string
   }>> => 
     request.post('/api/system/global-ai-config/test') as any
+}
+
+// 文件管理 API
+export interface UploadedFileItem {
+  id: number
+  filename: string
+  file_type: string
+  file_size: number
+  uploaded_at: string
+  mime_type: string
+}
+
+export const fileAPI = {
+  // 获取文件列表
+  getList: (): Promise<InterceptedResponse<UploadedFileItem[]>> =>
+    request.get('/api/files/list') as any,
+  
+  // 删除文件
+  delete: (fileId: number): Promise<InterceptedResponse<any>> =>
+    request.delete(`/api/files/${fileId}`) as any
 }
 

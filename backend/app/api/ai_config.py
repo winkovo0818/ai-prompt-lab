@@ -9,6 +9,7 @@ from ..models.ai_config import AIConfig, AIConfigCreate, AIConfigUpdate, AIConfi
 from ..core.database import get_session
 from ..core.deps import get_current_active_user
 from ..utils.response import success_response, error_response
+from ..services.encryption_service import EncryptionService
 
 router = APIRouter()
 
@@ -69,12 +70,15 @@ async def create_ai_config(
             detail="配置名称已存在"
         )
     
+    # 加密 API Key
+    encrypted_api_key = EncryptionService.encrypt_api_key(data.api_key)
+    
     # 创建配置
     config = AIConfig(
         user_id=current_user.id,
         name=data.name,
         base_url=data.base_url,
-        api_key=data.api_key,
+        api_key=encrypted_api_key,  # 使用加密后的 key
         model=data.model,
         description=data.description
     )
@@ -123,6 +127,16 @@ async def update_ai_config(
     
     # 更新字段
     update_data = data.model_dump(exclude_unset=True)
+    
+    # 如果更新 API Key，需要加密
+    if 'api_key' in update_data and update_data['api_key']:
+        # 如果包含*号，说明是脱敏的，不更新
+        if '*' not in update_data['api_key']:
+            update_data['api_key'] = EncryptionService.encrypt_api_key(update_data['api_key'])
+        else:
+            # 删除这个字段，不更新
+            del update_data['api_key']
+    
     for key, value in update_data.items():
         setattr(config, key, value)
     

@@ -9,8 +9,10 @@ from ..core.deps import get_current_active_user
 from ..models.user import User
 from ..models.prompt import Prompt
 from ..models.execution_history import ExecutionHistory
+from ..models.uploaded_file import UploadedFile
 from ..services.openai_service import OpenAIService
 from ..services.rate_limit import rate_limiter
+from ..services.file_service import FileService
 from ..utils.response import success_response, error_response
 from ..utils.token_counter import count_tokens, analyze_prompt_complexity
 
@@ -22,6 +24,7 @@ class RunPromptRequest(BaseModel):
     prompt_id: Optional[int] = None
     prompt_content: Optional[str] = None
     variables: Optional[Dict[str, str]] = None
+    file_variables: Optional[Dict[str, int]] = None  # 文件变量：{变量名: 文件ID}
     model: str = "gpt-3.5-turbo"
     temperature: float = 0.7
     max_tokens: int = 2000
@@ -78,8 +81,44 @@ async def run_prompt(
     else:
         return error_response(code=3002, message="必须提供 prompt_id 或 prompt_content")
     
+    # 处理文件变量
+    all_variables = dict(request.variables or {})
+    
+    if request.file_variables:
+        for var_name, file_id in request.file_variables.items():
+            # 获取文件
+            uploaded_file = db.get(UploadedFile, file_id)
+            
+            if not uploaded_file or uploaded_file.is_deleted:
+                return error_response(code=3004, message=f"文件不存在: {var_name}")
+            
+            # 权限检查
+            if uploaded_file.user_id != current_user.id:
+                return error_response(code=3005, message=f"无权访问文件: {var_name}")
+            
+            # 根据文件类型处理
+            if uploaded_file.file_type in ['text', 'code']:
+                # 文本文件：使用提取的文本
+                all_variables[var_name] = uploaded_file.extracted_text or ""
+            
+            elif uploaded_file.file_type == 'image':
+                # 图片：转为 Base64（用于 GPT-4V 等视觉模型）
+                base64_data = FileService.image_to_base64(uploaded_file.file_path)
+                if base64_data:
+                    all_variables[var_name] = base64_data
+                else:
+                    all_variables[var_name] = f"[图片: {uploaded_file.filename}]"
+            
+            elif uploaded_file.file_type == 'document':
+                # 文档：使用提取的文本
+                all_variables[var_name] = uploaded_file.extracted_text or f"[文档: {uploaded_file.filename}]"
+            
+            else:
+                # 其他：显示文件信息
+                all_variables[var_name] = f"[文件: {uploaded_file.filename}, 大小: {uploaded_file.file_size} 字节]"
+    
     # 替换变量
-    final_prompt = replace_variables(prompt_content, request.variables or {})
+    final_prompt = replace_variables(prompt_content, all_variables)
     
     # 分析 Prompt 复杂度
     complexity = analyze_prompt_complexity(final_prompt)

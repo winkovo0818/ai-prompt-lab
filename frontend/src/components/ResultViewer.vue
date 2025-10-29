@@ -129,7 +129,7 @@
     <!-- 渲染视图弹框 -->
     <el-dialog
       v-model="renderedDialogVisible"
-      title="渲染视图"
+      title="详情"
       width="90%"
       top="5vh"
       :close-on-click-modal="false"

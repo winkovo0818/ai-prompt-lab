@@ -115,9 +115,10 @@
           <div class="editor-right">
             <el-tabs v-model="activeTab" class="h-full">
               <el-tab-pane label="变量配置" name="variables">
-                <VariableInput
+                <VariableInputWithFile
                   :variables="variables"
                   v-model="variableValues"
+                  v-model:file-model-value="fileVariableValues"
                 />
               </el-tab-pane>
 
@@ -352,7 +353,7 @@ import { runAPI, promptAPI, executionHistoryAPI } from '@/api'
 import { extractVariables } from '@/utils/markdown'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Header from '@/components/Layout/Header.vue'
-import VariableInput from '@/components/VariableInput.vue'
+import VariableInputWithFile from '@/components/VariableInputWithFile.vue'
 import ResultViewer from '@/components/ResultViewer.vue'
 
 const route = useRoute()
@@ -373,6 +374,7 @@ const formData = reactive({
 })
 
 const variableValues = ref<Record<string, string>>({})
+const fileVariableValues = ref<Record<string, number>>({})
 const executionResult = ref<any>(null)
 
 // 版本历史相关
@@ -406,22 +408,35 @@ function loadVariableValuesFromCache() {
     const cacheKey = getCacheKey()
     const cached = localStorage.getItem(cacheKey)
     if (cached) {
-      const cachedValues = JSON.parse(cached)
-      console.log('📦 从缓存恢复变量值:', cachedValues)
+      const cachedData = JSON.parse(cached)
+      console.log('📦 从缓存恢复变量值:', cachedData)
+      
+      // 兼容旧格式（直接是变量值对象）
+      let cachedTextVars = cachedData.textVariables || cachedData
+      let cachedFileVars = cachedData.fileVariables || {}
       
       // 只恢复当前 Prompt 中实际存在的变量
       const currentVars = variables.value
-      const restoredValues: Record<string, string> = {}
+      const restoredTextValues: Record<string, string> = {}
+      const restoredFileValues: Record<string, number> = {}
       
       currentVars.forEach(varName => {
-        if (cachedValues[varName]) {
-          restoredValues[varName] = cachedValues[varName]
+        if (cachedTextVars[varName]) {
+          restoredTextValues[varName] = cachedTextVars[varName]
+        }
+        if (cachedFileVars[varName]) {
+          restoredFileValues[varName] = cachedFileVars[varName]
         }
       })
       
-      if (Object.keys(restoredValues).length > 0) {
-        variableValues.value = { ...variableValues.value, ...restoredValues }
-        console.log('✅ 已恢复变量值')
+      if (Object.keys(restoredTextValues).length > 0) {
+        variableValues.value = { ...variableValues.value, ...restoredTextValues }
+        console.log('✅ 已恢复文本变量值')
+      }
+      
+      if (Object.keys(restoredFileValues).length > 0) {
+        fileVariableValues.value = { ...fileVariableValues.value, ...restoredFileValues }
+        console.log('✅ 已恢复文件变量值')
       }
     }
   } catch (error) {
@@ -436,8 +451,12 @@ function saveVariableValuesToCache() {
   saveTimer = setTimeout(() => {
     try {
       const cacheKey = getCacheKey()
-      localStorage.setItem(cacheKey, JSON.stringify(variableValues.value))
-      console.log('💾 变量值已缓存')
+      const cacheData = {
+        textVariables: variableValues.value,
+        fileVariables: fileVariableValues.value
+      }
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+      console.log('💾 变量值已缓存（文本+文件）')
     } catch (error) {
       console.error('保存变量值失败:', error)
     }
@@ -446,6 +465,11 @@ function saveVariableValuesToCache() {
 
 // 监听变量值变化，自动保存（带防抖）
 watch(variableValues, () => {
+  saveVariableValuesToCache()
+}, { deep: true })
+
+// 监听文件变量值变化，自动保存
+watch(fileVariableValues, () => {
   saveVariableValuesToCache()
 }, { deep: true })
 
@@ -528,6 +552,7 @@ async function handleRun() {
       prompt_id: isEditMode.value ? Number(route.params.id) : undefined,
       prompt_content: formData.content,
       variables: variableValues.value,
+      file_variables: fileVariableValues.value,
       model: configStore.selectedModel,
       temperature: configStore.temperature,
       max_tokens: configStore.maxTokens
@@ -749,7 +774,7 @@ function formatDate(dateString: string) {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  background: #f5f7fa;
 }
 
 .editor-container {
@@ -763,15 +788,16 @@ function formatDate(dateString: string) {
   display: flex;
   flex-direction: column;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  border: 1px solid #e1e4e8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
 .toolbar {
-  background: linear-gradient(to right, #ffffff, #f8fafc);
-  border-bottom: 2px solid #e2e8f0;
-  padding: 1.25rem 2rem;
+  background: white;
+  border-bottom: 1px solid #e1e4e8;
+  padding: 1rem 1.5rem;
 }
 
 .toolbar .flex {
@@ -784,8 +810,8 @@ function formatDate(dateString: string) {
 }
 
 .toolbar .text-gray-600 {
-  color: #4a5568;
-  font-weight: 500;
+  color: #586069;
+  font-weight: 600;
   font-size: 0.95rem;
 }
 
@@ -799,7 +825,7 @@ function formatDate(dateString: string) {
   flex: 1;
   overflow-y: auto;
   padding: 2rem 2.5rem;
-  background: #ffffff;
+  background: white;
 }
 
 .editor-left::-webkit-scrollbar {
@@ -807,22 +833,22 @@ function formatDate(dateString: string) {
 }
 
 .editor-left::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #f6f8fa;
 }
 
 .editor-left::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
+  background: #d1d5da;
   border-radius: 4px;
 }
 
 .editor-left::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
+  background: #959da5;
 }
 
 .editor-right {
   width: 480px;
-  background: #f8fafc;
-  border-left: 2px solid #e2e8f0;
+  background: #fafbfc;
+  border-left: 1px solid #e1e4e8;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -838,13 +864,46 @@ function formatDate(dateString: string) {
   margin: 0;
   background: white;
   padding: 1rem 1.5rem 0;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.editor-right :deep(.el-tabs__item) {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #586069;
+}
+
+.editor-right :deep(.el-tabs__item:hover) {
+  color: #0366d6;
+}
+
+.editor-right :deep(.el-tabs__item.is-active) {
+  color: #24292e;
+  font-weight: 600;
+}
+
+.editor-right :deep(.el-tabs__active-bar) {
+  height: 2px;
+  background: #0366d6;
 }
 
 .editor-right :deep(.el-tabs__content) {
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem;
+}
+
+.editor-right :deep(.el-tabs__content)::-webkit-scrollbar {
+  width: 8px;
+}
+
+.editor-right :deep(.el-tabs__content)::-webkit-scrollbar-track {
+  background: #f6f8fa;
+}
+
+.editor-right :deep(.el-tabs__content)::-webkit-scrollbar-thumb {
+  background: #d1d5da;
+  border-radius: 4px;
 }
 
 .form-section {
@@ -854,51 +913,53 @@ function formatDate(dateString: string) {
 
 .form-section :deep(.el-form-item__label) {
   font-weight: 600;
-  color: #2d3748;
-  font-size: 0.95rem;
+  color: #24292e;
+  font-size: 0.9rem;
   margin-bottom: 0.5rem;
 }
 
 .form-section :deep(.el-input__wrapper) {
-  box-shadow: 0 0 0 1px #cbd5e0, 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  transition: all 0.3s;
+  box-shadow: none;
+  border-radius: 6px;
+  transition: all 0.15s;
   background-color: #ffffff;
+  border: 1px solid #d1d5da;
 }
 
 .form-section :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #94a3b8, 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: #a8adb3;
 }
 
 .form-section :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #667eea, 0 0 0 4px rgba(102, 126, 234, 0.1);
-  background-color: #ffffff;
+  border-color: #0366d6;
+  box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
 }
 
 .form-section :deep(.el-input__inner) {
-  color: #1e293b;
-  font-weight: 500;
+  color: #24292e;
+  font-size: 0.9rem;
 }
 
 .form-section :deep(.el-textarea__inner) {
-  box-shadow: 0 0 0 1px #cbd5e0, 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  box-shadow: none;
+  border-radius: 6px;
+  font-family: 'Consolas', 'Monaco', 'SF Mono', 'Courier New', monospace;
   line-height: 1.6;
-  transition: all 0.3s;
+  transition: all 0.15s;
   background-color: #ffffff;
-  color: #1e293b;
-  font-weight: 500;
+  color: #24292e;
   font-size: 14px;
+  border: 1px solid #d1d5da;
+  padding: 10px 12px;
 }
 
 .form-section :deep(.el-textarea__inner:hover) {
-  box-shadow: 0 0 0 1px #94a3b8, 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: #a8adb3;
 }
 
 .form-section :deep(.el-textarea__inner:focus) {
-  box-shadow: 0 0 0 2px #667eea, 0 0 0 4px rgba(102, 126, 234, 0.1);
-  background-color: #ffffff;
+  border-color: #0366d6;
+  box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
 }
 
 .form-section :deep(.el-textarea__inner::placeholder),
@@ -940,45 +1001,58 @@ function formatDate(dateString: string) {
 
 /* 按钮优化 */
 :deep(.el-button) {
-  border-radius: 8px;
+  border-radius: 6px;
   font-weight: 500;
-  transition: all 0.3s;
+  transition: all 0.15s;
 }
 
 :deep(.el-button--primary) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
+  background: #0366d6;
+  border-color: #0366d6;
 }
 
 :deep(.el-button--primary:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background: #0256c5;
+  border-color: #0256c5;
 }
 
 :deep(.el-button--success) {
-  background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
-  border: none;
+  background: #28a745;
+  border-color: #28a745;
 }
 
 :deep(.el-button--success:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(86, 171, 47, 0.4);
+  background: #22863a;
+  border-color: #22863a;
+}
+
+:deep(.el-button--danger) {
+  background: #d73a49;
+  border-color: #d73a49;
+}
+
+:deep(.el-button--danger:hover) {
+  background: #cb2431;
+  border-color: #cb2431;
 }
 
 /* 版本历史样式 */
 .version-history-container {
   padding: 1rem;
+  background: #fafbfc;
 }
 
 .version-card {
   margin-bottom: 1rem;
-  border-radius: 8px;
-  transition: all 0.3s;
+  border-radius: 6px;
+  transition: all 0.15s;
+  border: 1px solid #e1e4e8;
+  background: white;
 }
 
 .version-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 5px rgba(27, 31, 35, 0.1);
+  border-color: #d1d5da;
 }
 
 .version-header {
@@ -986,6 +1060,8 @@ function formatDate(dateString: string) {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e1e4e8;
 }
 
 .version-info {
@@ -996,8 +1072,8 @@ function formatDate(dateString: string) {
 
 .version-number {
   font-weight: 600;
-  font-size: 1.1rem;
-  color: #3b82f6;
+  font-size: 1rem;
+  color: #0366d6;
 }
 
 .version-actions {
@@ -1110,6 +1186,7 @@ function formatDate(dateString: string) {
 /* 执行历史样式 */
 .execution-history-container {
   padding: 1rem;
+  background: #fafbfc;
 }
 
 .history-list {
@@ -1119,30 +1196,38 @@ function formatDate(dateString: string) {
 }
 
 .history-card {
-  border-radius: 8px;
-  transition: all 0.3s;
+  border-radius: 6px;
+  transition: all 0.15s;
+  border: 1px solid #e1e4e8;
+  background: white;
 }
 
 .history-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 5px rgba(27, 31, 35, 0.1);
+  border-color: #d1d5da;
 }
 
 .history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e1e4e8;
 }
 
 .history-time {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #64748b;
-  font-size: 0.9rem;
+  color: #586069;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.history-time .el-icon {
+  font-size: 1rem;
+  color: #0366d6;
 }
 
 .history-info {
@@ -1154,16 +1239,16 @@ function formatDate(dateString: string) {
 .info-row {
   display: flex;
   gap: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
 }
 
 .info-row .label {
-  color: #64748b;
+  color: #586069;
   font-weight: 500;
 }
 
 .info-row .value {
-  color: #1e293b;
+  color: #24292e;
   font-weight: 600;
 }
 </style>
