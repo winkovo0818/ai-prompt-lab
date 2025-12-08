@@ -88,3 +88,59 @@ pre code {
   background: #555;
 }
 
+/* ==================== 移动端响应式适配 ==================== */
+
+/* 移动端隐藏/显示 */
+.mobile-only {
+  display: none !important;
+}
+
+.desktop-only {
+  display: flex !important;
+}
+
+/* 移动端断点: < 768px */
+@media (max-width: 768px) {
+  .mobile-only {
+    display: flex !important;
+  }
+  
+  .desktop-only {
+    display: none !important;
+  }
+  
+  /* Element Plus 组件适配 */
+  .el-dialog {
+    width: 90% !important;
+    max-width: 90% !important;
+    margin: 5vh auto !important;
+  }
+  
+  .el-drawer {
+    width: 100% !important;
+  }
+  
+  .el-message-box {
+    width: 90% !important;
+  }
+  
+  /* 通用间距调整 */
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* 隐藏移动端滚动条 */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* 平板断点: 768px - 1024px */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .el-dialog {
+    width: 80% !important;
+  }
+}
+

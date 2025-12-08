@@ -713,5 +713,90 @@ async function handleDelete(id: number) {
   font-size: 0.9rem;
   color: #3b82f6;
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem !important;
+  }
+  
+  .page-header .flex {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 1rem;
+  }
+  
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .create-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .toolbar {
+    padding: 1rem;
+  }
+  
+  .toolbar .flex {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .search-input {
+    width: 100% !important;
+  }
+  
+  .toolbar .space-x-2 {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .filter-btn {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .prompts-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .pagination {
+    padding: 1rem;
+  }
+  
+  .pagination :deep(.el-pagination) {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .stat-card {
+    padding: 1rem;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .empty-content {
+    padding: 2rem 1.5rem;
+  }
+  
+  .empty-tips {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+  }
+}
 </style>
 

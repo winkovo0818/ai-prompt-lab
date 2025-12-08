@@ -1221,4 +1221,74 @@ onMounted(async () => {
   font-weight: 600;
   font-size: 1.25rem;
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .teams-content {
+    padding: 1rem !important;
+  }
+  
+  .page-header {
+    padding: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .page-header .flex {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch !important;
+  }
+  
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .header-actions .el-input,
+  .header-actions .el-button {
+    width: 100%;
+  }
+  
+  .teams-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+  
+  .team-card {
+    padding: 1rem !important;
+  }
+  
+  .team-card-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.75rem;
+  }
+  
+  .team-meta {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .empty-features {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .empty-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .empty-actions .el-button {
+    width: 100%;
+  }
+  
+  .invite-result .el-input {
+    font-size: 0.75rem;
+  }
+}
 </style>

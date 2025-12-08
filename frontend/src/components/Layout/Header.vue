@@ -1,10 +1,15 @@
 <template>
-  <div class="header bg-white border-b border-gray-200 flex items-center justify-between px-6 h-16">
+  <div class="header bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 h-14 md:h-16">
+    <!-- 移动端汉堡菜单 -->
+    <el-button class="mobile-menu-btn mobile-only" text @click="mobileMenuVisible = true">
+      <el-icon :size="24"><Menu /></el-icon>
+    </el-button>
+    
     <div class="flex items-center space-x-4">
       <router-link to="/prompts" class="logo-link">
         <img src="/logo-horizontal.svg" alt="AI Prompt Lab" class="logo" />
       </router-link>
-      <nav class="flex space-x-1">
+      <nav class="nav-desktop desktop-only flex space-x-1">
         <router-link
           v-for="item in navItems"
           :key="item.path"
@@ -90,6 +95,67 @@
         </template>
       </el-dropdown>
     </div>
+    
+    <!-- 移动端导航抽屉 -->
+    <el-drawer
+      v-model="mobileMenuVisible"
+      direction="ltr"
+      size="280px"
+      :show-close="false"
+      class="mobile-drawer"
+    >
+      <template #header>
+        <div class="mobile-drawer-header">
+          <img src="/logo-horizontal.svg" alt="AI Prompt Lab" class="mobile-logo" />
+          <el-button text @click="mobileMenuVisible = false">
+            <el-icon :size="20"><Close /></el-icon>
+          </el-button>
+        </div>
+      </template>
+      
+      <div class="mobile-nav">
+        <router-link
+          v-for="item in navItems"
+          :key="item.path"
+          :to="item.path"
+          class="mobile-nav-item"
+          :class="{ active: isActive(item.path) }"
+          @click="mobileMenuVisible = false"
+        >
+          <el-icon><component :is="item.icon" /></el-icon>
+          <span>{{ item.name }}</span>
+        </router-link>
+        
+        <!-- 管理员菜单 -->
+        <template v-if="userStore.userInfo?.role === 'admin'">
+          <div class="mobile-nav-divider"></div>
+          <div class="mobile-nav-title">网站管理</div>
+          <router-link 
+            v-for="adminItem in adminItems" 
+            :key="adminItem.path"
+            :to="adminItem.path" 
+            class="mobile-nav-item"
+            :class="{ active: route.path === adminItem.path }"
+            @click="mobileMenuVisible = false"
+          >
+            <el-icon><component :is="adminItem.icon" /></el-icon>
+            <span>{{ adminItem.name }}</span>
+          </router-link>
+        </template>
+        
+        <div class="mobile-nav-divider"></div>
+        
+        <!-- 用户操作 -->
+        <div class="mobile-nav-item" @click="handleProfile(); mobileMenuVisible = false">
+          <el-icon><User /></el-icon>
+          <span>个人资料</span>
+        </div>
+        <div class="mobile-nav-item logout" @click="handleLogout">
+          <el-icon><SwitchButton /></el-icon>
+          <span>退出登录</span>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -104,6 +170,7 @@ const route = useRoute()
 const userStore = useUserStore()
 
 const siteName = ref('AI Prompt Lab')
+const mobileMenuVisible = ref(false)
 
 onMounted(async () => {
   await loadSiteSettings()
@@ -137,6 +204,15 @@ const navItems = [
   { name: '模板库', path: '/templates', icon: 'Collection' },
   { name: '使用统计', path: '/statistics', icon: 'DataLine' },
   { name: 'API设置', path: '/settings', icon: 'Setting' }
+]
+
+const adminItems = [
+  { name: '用户管理', path: '/admin/users', icon: 'UserFilled' },
+  { name: 'Prompt管理', path: '/admin/prompts', icon: 'DocumentCopy' },
+  { name: '模板库管理', path: '/admin/templates', icon: 'Collection' },
+  { name: '团队管理', path: '/admin/teams', icon: 'UserFilled' },
+  { name: '安全管理', path: '/admin/security-config', icon: 'Lock' },
+  { name: '网站设置', path: '/admin/site-settings', icon: 'Setting' }
 ]
 
 function isActive(path: string) {
@@ -206,6 +282,84 @@ async function handleLogout() {
 
 .user-dropdown :deep(.el-avatar) {
   border: 2px solid #e4e7ed;
+}
+
+/* 移动端样式 */
+.mobile-menu-btn {
+  padding: 0.5rem;
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.mobile-logo {
+  height: 36px;
+}
+
+.mobile-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+}
+
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  color: #4b5563;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item.active {
+  background: #f3f4f6;
+  color: #409eff;
+}
+
+.mobile-nav-item.logout {
+  color: #ef4444;
+}
+
+.mobile-nav-item.logout:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.mobile-nav-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0.5rem 1rem;
+}
+
+.mobile-nav-title {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .logo {
+    height: 32px;
+  }
+  
+  .user-dropdown span {
+    display: none;
+  }
+  
+  .user-dropdown .el-icon:last-child {
+    display: none;
+  }
 }
 </style>
 

@@ -1920,5 +1920,80 @@ function applyOptimizedPrompt() {
 .readonly-banner strong {
   color: #78350f;
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .editor-container {
+    padding: 1rem !important;
+  }
+  
+  .toolbar {
+    padding: 0.75rem 1rem !important;
+  }
+  
+  .toolbar .flex {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .toolbar .flex > div {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .toolbar .space-x-2 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .toolbar .space-x-2 .el-button {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .editor-content {
+    flex-direction: column !important;
+    gap: 1rem;
+  }
+  
+  .editor-left,
+  .editor-right {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  
+  .editor-right {
+    height: auto !important;
+    max-height: 50vh;
+  }
+  
+  .form-section {
+    padding: 1rem !important;
+  }
+  
+  .dimensions {
+    grid-template-columns: 1fr;
+  }
+  
+  .strengths-weaknesses {
+    grid-template-columns: 1fr;
+  }
+  
+  .readonly-banner {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar .space-x-2 .el-button span {
+    display: none;
+  }
+  
+  .toolbar .space-x-2 .el-button {
+    padding: 8px 12px;
+  }
+}
 </style>
 
