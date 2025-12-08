@@ -11,10 +11,10 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # 数据库配置（使用 utf8mb4 支持 emoji）
-    DATABASE_URL: str = "mysql+pymysql://root:Dd000818..@localhost:3306/ai_prompt_lab?charset=utf8mb4"
+    DATABASE_URL: str = "mysql+pymysql://root:admin1020@localhost:3306/ai_prompt_lab?charset=utf8mb4"
     
     # JWT 配置
-    SECRET_KEY: str = "your-secret-key-here-please-change-in-production"
+    SECRET_KEY: str = "9GdpDB7b7lO1CawehX4VUlVU4Q5E565LUEtH0-LzH6o"  # 使用 secrets.token_urlsafe(32) 生成
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7天（原30分钟太短）
     

@@ -44,6 +44,10 @@
                 <el-icon><Collection /></el-icon>
                 模板库管理
               </el-dropdown-item>
+              <el-dropdown-item @click="router.push('/admin/teams')">
+                <el-icon><UserFilled /></el-icon>
+                团队管理
+              </el-dropdown-item>
           <el-dropdown-item divided @click="router.push('/admin/security-config')">
             <el-icon><Lock /></el-icon>
             安全管理
@@ -128,8 +132,10 @@ async function loadSiteSettings() {
 
 const navItems = [
   { name: 'Prompt 列表', path: '/prompts', icon: 'List' },
+  { name: '团队', path: '/teams', icon: 'UserFilled' },
   { name: 'A/B 测试', path: '/compare', icon: 'DataAnalysis' },
   { name: '模板库', path: '/templates', icon: 'Collection' },
+  { name: '使用统计', path: '/statistics', icon: 'DataLine' },
   { name: 'API设置', path: '/settings', icon: 'Setting' }
 ]
 

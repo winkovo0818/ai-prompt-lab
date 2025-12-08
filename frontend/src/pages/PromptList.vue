@@ -86,11 +86,42 @@
 
         <div v-if="!promptStore.loading && promptStore.prompts.length === 0" class="empty-state">
           <div class="empty-content">
-            <div class="empty-icon">
-              <el-icon :size="80"><DocumentAdd /></el-icon>
+            <!-- 装饰性背景 -->
+            <div class="empty-decoration">
+              <div class="decoration-circle circle-1"></div>
+              <div class="decoration-circle circle-2"></div>
+              <div class="decoration-circle circle-3"></div>
             </div>
-            <h2 class="empty-title">还没有 Prompt</h2>
-            <p class="empty-description">创建你的第一个 AI Prompt，开始智能工作之旅</p>
+            
+            <!-- 图标区域 -->
+            <div class="empty-icon-wrapper">
+              <div class="empty-icon-bg"></div>
+              <div class="empty-icon">
+                <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="12" y="8" width="56" height="64" rx="6" stroke="url(#gradient1)" stroke-width="3"/>
+                  <path d="M24 24h32M24 36h24M24 48h28" stroke="url(#gradient1)" stroke-width="3" stroke-linecap="round"/>
+                  <circle cx="56" cy="56" r="16" fill="url(#gradient2)"/>
+                  <path d="M56 48v16M48 56h16" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                  <defs>
+                    <linearGradient id="gradient1" x1="12" y1="8" x2="68" y2="72" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#3b82f6"/>
+                      <stop offset="1" stop-color="#8b5cf6"/>
+                    </linearGradient>
+                    <linearGradient id="gradient2" x1="40" y1="40" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#3b82f6"/>
+                      <stop offset="1" stop-color="#2563eb"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+            </div>
+            
+            <h2 class="empty-title">开启你的 AI 创作之旅</h2>
+            <p class="empty-description">
+              创建你的第一个 Prompt 模板<br/>
+              <span class="empty-hint">高效管理、快速调试、智能优化</span>
+            </p>
+            
             <el-button 
               type="primary" 
               size="large"
@@ -100,6 +131,21 @@
               <el-icon><Plus /></el-icon>
               创建第一个 Prompt
             </el-button>
+            
+            <div class="empty-tips">
+              <div class="tip-item">
+                <el-icon><Document /></el-icon>
+                <span>支持变量模板</span>
+              </div>
+              <div class="tip-item">
+                <el-icon><Star /></el-icon>
+                <span>收藏常用 Prompt</span>
+              </div>
+              <div class="tip-item">
+                <el-icon><Link /></el-icon>
+                <span>一键分享协作</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -138,7 +184,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePromptStore } from '@/store/prompt'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, Star, Link, Clock, Plus, Search, DocumentAdd } from '@element-plus/icons-vue'
+import { Document, Star, Link, Clock, Plus, Search } from '@element-plus/icons-vue'
 import Header from '@/components/Layout/Header.vue'
 import PromptCard from '@/components/PromptCard.vue'
 import { PromptItem } from '@/api'
@@ -284,18 +330,23 @@ async function handleDelete(id: number) {
   display: flex;
   flex-direction: column;
   background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  overflow: hidden;
 }
 
 .content-container {
   flex: 1;
   overflow: hidden;
+  width: 100%;
 }
 
 .main-content {
+  height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .main-content::-webkit-scrollbar {
@@ -466,23 +517,109 @@ async function handleDelete(id: number) {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 300px);
-  padding: 3rem;
+  min-height: calc(100vh - 340px);
+  padding: 2rem;
 }
 
 .empty-content {
   text-align: center;
-  max-width: 500px;
-  background: white;
-  padding: 4rem 3rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  max-width: 480px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 3rem 2.5rem;
+  border-radius: 24px;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 10px 40px -10px rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 装饰性背景圆圈 */
+.empty-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.decoration-circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.circle-1 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+  top: -60px;
+  right: -60px;
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+.circle-2 {
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+  bottom: -40px;
+  left: -40px;
+  animation: pulse-slow 5s ease-in-out infinite 1s;
+}
+
+.circle-3 {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.06) 0%, transparent 70%);
+  top: 50%;
+  left: 10%;
+  animation: pulse-slow 6s ease-in-out infinite 2s;
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.3;
+  }
+}
+
+/* 图标包装器 */
+.empty-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.empty-icon-bg {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-radius: 50%;
+  animation: float 4s ease-in-out infinite;
 }
 
 .empty-icon {
-  margin-bottom: 2rem;
-  color: #cbd5e0;
-  animation: float 3s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+  width: 80px;
+  height: 80px;
+  animation: float 4s ease-in-out infinite;
+}
+
+.empty-icon svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.2));
 }
 
 @keyframes float {
@@ -490,43 +627,91 @@ async function handleDelete(id: number) {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
 }
 
 .empty-title {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #1e293b;
+  background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 0.75rem;
+  position: relative;
+  z-index: 1;
 }
 
 .empty-description {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #64748b;
-  margin-bottom: 2rem;
-  line-height: 1.6;
+  margin-bottom: 1.75rem;
+  line-height: 1.8;
+  position: relative;
+  z-index: 1;
+}
+
+.empty-hint {
+  color: #94a3b8;
+  font-size: 0.85rem;
 }
 
 .create-button {
   font-size: 1rem;
   padding: 0.875rem 2rem;
   height: auto;
-  border-radius: 10px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   border: none;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.35);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
 }
 
 .create-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.45);
+}
+
+.create-button:active {
+  transform: translateY(-1px);
 }
 
 .create-button :deep(.el-icon) {
   margin-right: 0.5rem;
+}
+
+/* 功能提示 */
+.empty-tips {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(59, 130, 246, 0.1);
+  position: relative;
+  z-index: 1;
+}
+
+.tip-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  transition: all 0.2s;
+}
+
+.tip-item:hover {
+  color: #3b82f6;
+}
+
+.tip-item .el-icon {
+  font-size: 0.9rem;
+  color: #3b82f6;
 }
 </style>
 

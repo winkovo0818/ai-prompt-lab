@@ -70,6 +70,13 @@
           <el-icon class="mr-1"><Link /></el-icon>
           公开
         </span>
+        <span v-if="prompt.team_shared" class="team-badge">
+          <el-icon class="mr-1"><UserFilled /></el-icon>
+          {{ prompt.team_info?.team_name || '团队' }}
+          <span class="permission-tag" :class="prompt.team_info?.permission">
+            {{ prompt.team_info?.permission === 'edit' ? '可编辑' : '只读' }}
+          </span>
+        </span>
       </div>
       <span class="time-text">{{ formatRelativeTime(prompt.updated_at) }}</span>
     </div>
@@ -198,6 +205,35 @@ function getAccentColor() {
   align-items: center;
   color: #10b981;
   font-weight: 500;
+}
+
+.team-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #409eff;
+  font-weight: 500;
+  background: #ecf5ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+}
+
+.permission-tag {
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.permission-tag.view {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.permission-tag.edit {
+  background: #d1fae5;
+  color: #065f46;
 }
 
 .time-text {

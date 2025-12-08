@@ -10,6 +10,7 @@ from ..models.prompt import (
     PromptResponse, PromptListItem, UserPromptFavorite
 )
 from ..models.prompt_version import PromptVersion, PromptVersionResponse
+from ..models.team import TeamPrompt, TeamMember
 from ..utils.response import success_response, error_response
 
 router = APIRouter(prefix="/api/prompt", tags=["Prompt管理"])
@@ -76,18 +77,62 @@ async def get_prompt_list(
     tags: Optional[str] = None,
     is_favorite: Optional[bool] = None,
     is_public: Optional[bool] = None,
+    include_team: Optional[bool] = Query(True, description="是否包含团队共享的 Prompt"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_session)
 ):
     """获取 Prompt 列表"""
     
-    # 构建查询
-    statement = select(Prompt).where(
-        or_(
-            Prompt.user_id == current_user.id,
-            Prompt.is_public == True
+    # 获取用户所属团队的共享 Prompt IDs
+    team_prompt_ids = set()
+    team_prompt_info = {}  # prompt_id -> {team_name, permission}
+    
+    if include_team:
+        # 获取用户加入的团队
+        user_teams = db.exec(
+            select(TeamMember).where(
+                TeamMember.user_id == current_user.id,
+                TeamMember.status == "active"
+            )
+        ).all()
+        
+        team_ids = [tm.team_id for tm in user_teams]
+        
+        if team_ids:
+            # 获取这些团队共享的 Prompt
+            from ..models.team import Team
+            team_prompts = db.exec(
+                select(TeamPrompt).where(TeamPrompt.team_id.in_(team_ids))
+            ).all()
+            
+            for tp in team_prompts:
+                # 排除自己创建的 Prompt（避免重复）
+                prompt = db.get(Prompt, tp.prompt_id)
+                if prompt and prompt.user_id != current_user.id:
+                    team_prompt_ids.add(tp.prompt_id)
+                    team = db.get(Team, tp.team_id)
+                    team_prompt_info[tp.prompt_id] = {
+                        "team_id": tp.team_id,
+                        "team_name": team.name if team else None,
+                        "permission": tp.permission
+                    }
+    
+    # 构建查询 - 包含自己的、公开的、团队共享的
+    if team_prompt_ids:
+        statement = select(Prompt).where(
+            or_(
+                Prompt.user_id == current_user.id,
+                Prompt.is_public == True,
+                Prompt.id.in_(team_prompt_ids)
+            )
         )
-    )
+    else:
+        statement = select(Prompt).where(
+            or_(
+                Prompt.user_id == current_user.id,
+                Prompt.is_public == True
+            )
+        )
     
     # 搜索过滤
     if search:
@@ -143,18 +188,22 @@ async def get_prompt_list(
     # 转换为列表项
     items = []
     for prompt in prompts:
-        item = PromptListItem(
-            id=prompt.id,
-            title=prompt.title,
-            description=prompt.description,
-            tags=prompt.tags,
-            is_favorite=prompt.id in favorite_ids,  # 基于当前用户的收藏状态
-            is_public=prompt.is_public,
-            version=prompt.version,
-            created_at=prompt.created_at,
-            updated_at=prompt.updated_at
-        )
-        items.append(item.model_dump())
+        item_data = {
+            "id": prompt.id,
+            "title": prompt.title,
+            "description": prompt.description,
+            "tags": prompt.tags,
+            "is_favorite": prompt.id in favorite_ids,
+            "is_public": prompt.is_public,
+            "is_owner": prompt.user_id == current_user.id,
+            "version": prompt.version,
+            "created_at": prompt.created_at.isoformat() if prompt.created_at else None,
+            "updated_at": prompt.updated_at.isoformat() if prompt.updated_at else None,
+            # 团队共享信息
+            "team_shared": prompt.id in team_prompt_info,
+            "team_info": team_prompt_info.get(prompt.id)
+        }
+        items.append(item_data)
     
     return success_response(data={
         "items": items,
@@ -177,9 +226,41 @@ async def get_prompt_detail(
     if not prompt:
         return error_response(code=2001, message="Prompt 不存在")
     
-    # 权限检查
+    # 检查团队共享权限
+    team_permission = None
+    team_info = None
+    
     if prompt.user_id != current_user.id and not prompt.is_public:
-        return error_response(code=2002, message="无权访问该 Prompt")
+        # 检查是否通过团队共享获得权限
+        from ..models.team import Team
+        user_teams = db.exec(
+            select(TeamMember).where(
+                TeamMember.user_id == current_user.id,
+                TeamMember.status == "active"
+            )
+        ).all()
+        
+        team_ids = [tm.team_id for tm in user_teams]
+        
+        if team_ids:
+            team_prompt = db.exec(
+                select(TeamPrompt).where(
+                    TeamPrompt.prompt_id == prompt_id,
+                    TeamPrompt.team_id.in_(team_ids)
+                )
+            ).first()
+            
+            if team_prompt:
+                team_permission = team_prompt.permission
+                team = db.get(Team, team_prompt.team_id)
+                team_info = {
+                    "team_id": team_prompt.team_id,
+                    "team_name": team.name if team else None,
+                    "permission": team_prompt.permission
+                }
+        
+        if not team_permission:
+            return error_response(code=2002, message="无权访问该 Prompt")
     
     # 检查当前用户是否已收藏
     favorite_statement = select(UserPromptFavorite).where(
@@ -188,21 +269,28 @@ async def get_prompt_detail(
     )
     is_favorite = db.exec(favorite_statement).first() is not None
     
-    response = PromptResponse(
-        id=prompt.id,
-        user_id=prompt.user_id,
-        title=prompt.title,
-        content=prompt.content,
-        description=prompt.description,
-        tags=prompt.tags,
-        is_favorite=is_favorite,
-        is_public=prompt.is_public,
-        version=prompt.version,
-        created_at=prompt.created_at,
-        updated_at=prompt.updated_at
-    )
+    # 确定编辑权限
+    can_edit = prompt.user_id == current_user.id or team_permission == "edit"
     
-    return success_response(data=response.model_dump())
+    response_data = {
+        "id": prompt.id,
+        "user_id": prompt.user_id,
+        "title": prompt.title,
+        "content": prompt.content,
+        "description": prompt.description,
+        "tags": prompt.tags,
+        "is_favorite": is_favorite,
+        "is_public": prompt.is_public,
+        "version": prompt.version,
+        "created_at": prompt.created_at.isoformat() if prompt.created_at else None,
+        "updated_at": prompt.updated_at.isoformat() if prompt.updated_at else None,
+        "is_owner": prompt.user_id == current_user.id,
+        "can_edit": can_edit,
+        "team_shared": team_info is not None,
+        "team_info": team_info
+    }
+    
+    return success_response(data=response_data)
 
 
 @router.put("/{prompt_id}", response_model=dict)
@@ -220,8 +308,33 @@ async def update_prompt(
         if not prompt:
             return error_response(code=2001, message="Prompt 不存在")
         
-        # 权限检查
-        if prompt.user_id != current_user.id:
+        # 权限检查 - 支持团队共享编辑权限
+        can_edit = prompt.user_id == current_user.id
+        
+        if not can_edit:
+            # 检查是否有团队编辑权限
+            user_teams = db.exec(
+                select(TeamMember).where(
+                    TeamMember.user_id == current_user.id,
+                    TeamMember.status == "active"
+                )
+            ).all()
+            
+            team_ids = [tm.team_id for tm in user_teams]
+            
+            if team_ids:
+                team_prompt = db.exec(
+                    select(TeamPrompt).where(
+                        TeamPrompt.prompt_id == prompt_id,
+                        TeamPrompt.team_id.in_(team_ids),
+                        TeamPrompt.permission == "edit"
+                    )
+                ).first()
+                
+                if team_prompt:
+                    can_edit = True
+        
+        if not can_edit:
             return error_response(code=2003, message="无权修改该 Prompt")
         
         # 打印调试信息

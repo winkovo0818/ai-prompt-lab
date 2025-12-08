@@ -96,11 +96,19 @@ class OpenAIService:
             # 调用真实 AI
             start_time = time.time()
             
+            # 构建消息列表
+            messages = []
+            
+            # 如果提供了 system_prompt，添加系统消息
+            system_prompt = kwargs.get("system_prompt")
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            messages.append({"role": "user", "content": prompt})
+            
             completion = await client.chat.completions.create(
                 model=ai_config.model,  # 使用配置中的模型
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
+                messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens
             )
@@ -120,6 +128,7 @@ class OpenAIService:
             
             return {
                 "output": output_text,
+                "content": output_text,  # 兼容字段
                 "model": ai_config.model,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,

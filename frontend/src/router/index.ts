@@ -43,6 +43,18 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/statistics',
+    name: 'Statistics',
+    component: () => import('@/pages/Statistics.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/teams',
+    name: 'Teams',
+    component: () => import('@/pages/Teams.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/pages/Profile.vue'),
@@ -94,6 +106,12 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/global-ai-config',
     name: 'AdminGlobalAIConfig',
     component: () => import('@/pages/admin/GlobalAIConfig.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/teams',
+    name: 'AdminTeams',
+    component: () => import('@/pages/admin/Teams.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]

@@ -8,6 +8,7 @@ from ..models.user import User, UserResponse, UserUpdate, UserCreate
 from ..models.prompt import Prompt
 from ..models.site_settings import SiteSettings, SiteSettingsUpdate, SiteSettingsResponse
 from ..models.template import PromptTemplate, PromptTemplateCreate, PromptTemplateUpdate
+from ..models.team import Team, TeamMember, TeamPrompt
 from ..utils.response import success_response, error_response
 
 router = APIRouter(prefix="/api/admin", tags=["管理员"])
@@ -529,4 +530,204 @@ async def delete_template(
     db.commit()
     
     return success_response(message="模板删除成功")
+
+
+# ==================== 团队管理 ====================
+
+@router.get("/teams", response_model=dict)
+async def get_all_teams(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = None,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_session)
+):
+    """获取所有团队列表（管理员）"""
+    query = select(Team)
+    
+    if search:
+        query = query.where(Team.name.contains(search))
+    
+    # 统计总数
+    total = len(db.exec(query).all())
+    
+    # 分页
+    teams = db.exec(query.order_by(Team.created_at.desc()).offset(skip).limit(limit)).all()
+    
+    result = []
+    for team in teams:
+        # 获取所有者信息
+        owner = db.get(User, team.owner_id)
+        
+        # 统计成员数
+        member_count = len(db.exec(
+            select(TeamMember).where(
+                TeamMember.team_id == team.id,
+                TeamMember.status == "active"
+            )
+        ).all())
+        
+        # 统计 Prompt 数
+        prompt_count = len(db.exec(
+            select(TeamPrompt).where(TeamPrompt.team_id == team.id)
+        ).all())
+        
+        result.append({
+            "id": team.id,
+            "name": team.name,
+            "description": team.description,
+            "owner_id": team.owner_id,
+            "owner_username": owner.username if owner else None,
+            "is_public": team.is_public,
+            "member_count": member_count,
+            "prompt_count": prompt_count,
+            "created_at": team.created_at.isoformat() if team.created_at else None,
+            "updated_at": team.updated_at.isoformat() if team.updated_at else None
+        })
+    
+    return success_response(data={
+        "items": result,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    })
+
+
+@router.get("/teams/{team_id}", response_model=dict)
+async def get_team_detail_admin(
+    team_id: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_session)
+):
+    """获取团队详情（管理员）"""
+    team = db.get(Team, team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="团队不存在")
+    
+    owner = db.get(User, team.owner_id)
+    
+    # 获取成员列表
+    members = db.exec(
+        select(TeamMember).where(TeamMember.team_id == team_id)
+    ).all()
+    
+    member_list = []
+    for m in members:
+        user = db.get(User, m.user_id)
+        if user:
+            member_list.append({
+                "id": m.id,
+                "user_id": m.user_id,
+                "username": user.username,
+                "email": user.email,
+                "role": m.role,
+                "status": m.status,
+                "joined_at": m.joined_at.isoformat() if m.joined_at else None
+            })
+    
+    # 获取 Prompt 列表
+    team_prompts = db.exec(
+        select(TeamPrompt).where(TeamPrompt.team_id == team_id)
+    ).all()
+    
+    prompt_list = []
+    for tp in team_prompts:
+        prompt = db.get(Prompt, tp.prompt_id)
+        if prompt:
+            prompt_list.append({
+                "id": tp.id,
+                "prompt_id": tp.prompt_id,
+                "prompt_title": prompt.title,
+                "permission": tp.permission
+            })
+    
+    return success_response(data={
+        "id": team.id,
+        "name": team.name,
+        "description": team.description,
+        "owner_id": team.owner_id,
+        "owner_username": owner.username if owner else None,
+        "is_public": team.is_public,
+        "allow_member_invite": team.allow_member_invite,
+        "members": member_list,
+        "prompts": prompt_list,
+        "created_at": team.created_at.isoformat() if team.created_at else None,
+        "updated_at": team.updated_at.isoformat() if team.updated_at else None
+    })
+
+
+@router.put("/teams/{team_id}", response_model=dict)
+async def update_team_admin(
+    team_id: int,
+    data: dict,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_session)
+):
+    """更新团队（管理员）"""
+    team = db.get(Team, team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="团队不存在")
+    
+    if "name" in data:
+        team.name = data["name"]
+    if "description" in data:
+        team.description = data["description"]
+    if "is_public" in data:
+        team.is_public = data["is_public"]
+    if "allow_member_invite" in data:
+        team.allow_member_invite = data["allow_member_invite"]
+    if "owner_id" in data:
+        # 转移所有权
+        new_owner = db.get(User, data["owner_id"])
+        if not new_owner:
+            raise HTTPException(status_code=400, detail="新所有者不存在")
+        team.owner_id = data["owner_id"]
+    
+    db.add(team)
+    db.commit()
+    
+    return success_response(message="团队更新成功")
+
+
+@router.delete("/teams/{team_id}", response_model=dict)
+async def delete_team_admin(
+    team_id: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_session)
+):
+    """删除团队（管理员）"""
+    team = db.get(Team, team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="团队不存在")
+    
+    # 删除成员
+    for m in db.exec(select(TeamMember).where(TeamMember.team_id == team_id)).all():
+        db.delete(m)
+    
+    # 删除 Prompt 关联
+    for tp in db.exec(select(TeamPrompt).where(TeamPrompt.team_id == team_id)).all():
+        db.delete(tp)
+    
+    db.delete(team)
+    db.commit()
+    
+    return success_response(message="团队已删除")
+
+
+@router.delete("/teams/{team_id}/members/{member_id}", response_model=dict)
+async def remove_team_member_admin(
+    team_id: int,
+    member_id: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_session)
+):
+    """移除团队成员（管理员）"""
+    member = db.get(TeamMember, member_id)
+    if not member or member.team_id != team_id:
+        raise HTTPException(status_code=404, detail="成员不存在")
+    
+    db.delete(member)
+    db.commit()
+    
+    return success_response(message="成员已移除")
 

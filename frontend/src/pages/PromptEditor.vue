@@ -13,6 +13,12 @@
               <span class="text-sm text-gray-600">
                 {{ isEditMode ? '编辑 Prompt' : '新建 Prompt' }}
               </span>
+              <el-tag v-if="teamShared && teamInfo" type="primary" size="small" class="ml-2">
+                来自: {{ teamInfo.team_name }}
+              </el-tag>
+              <el-tag v-if="teamShared && !canEdit" type="warning" size="small">
+                只读
+              </el-tag>
             </div>
 
             <div class="flex items-center space-x-2">
@@ -31,14 +37,20 @@
                 版本历史
               </el-button>
               <el-button 
-                v-if="isEditMode" 
+                v-if="isEditMode && isOwner" 
                 @click="handleDelete" 
                 type="danger"
                 icon="Delete"
               >
                 删除
               </el-button>
-              <el-button @click="handleSave" type="primary" :loading="saving">
+              <el-button 
+                @click="handleSave" 
+                type="primary" 
+                :loading="saving"
+                :disabled="!canEdit"
+                :title="canEdit ? '' : '没有编辑权限'"
+              >
                 <el-icon><DocumentChecked /></el-icon>
                 保存
               </el-button>
@@ -48,6 +60,12 @@
               </el-button>
             </div>
           </div>
+        </div>
+
+        <!-- 只读提示 -->
+        <div v-if="teamShared && !canEdit" class="readonly-banner">
+          <el-icon><InfoFilled /></el-icon>
+          <span>此 Prompt 来自团队 <strong>{{ teamInfo?.team_name }}</strong>，您只有查看权限</span>
         </div>
 
         <!-- 编辑区域 -->
@@ -60,6 +78,7 @@
                     v-model="formData.title"
                     placeholder="给你的 Prompt 起个名字"
                     size="large"
+                    :disabled="!canEdit"
                   />
                 </el-form-item>
 
@@ -69,6 +88,7 @@
                     type="textarea"
                     :rows="2"
                     placeholder="简单描述一下这个 Prompt 的用途"
+                    :disabled="!canEdit"
                   />
                 </el-form-item>
 
@@ -79,6 +99,7 @@
                     :rows="15"
                     placeholder="输入你的 Prompt，使用 {{变量名}} 来添加变量"
                     @input="handleContentChange"
+                    :disabled="!canEdit"
                   />
                   <div class="text-xs text-gray-500 mt-1">
                     <span v-pre>提示：使用 {{变量名}} 语法添加可替换的变量</span>
@@ -93,6 +114,7 @@
                     allow-create
                     placeholder="添加标签"
                     class="w-full"
+                    :disabled="!canEdit"
                   >
                     <el-option
                       v-for="tag in commonTags"
@@ -104,7 +126,7 @@
                 </el-form-item>
 
                 <el-form-item>
-                  <el-checkbox v-model="formData.is_public">
+                  <el-checkbox v-model="formData.is_public" :disabled="!canEdit">
                     公开分享（其他人可以查看）
                   </el-checkbox>
                 </el-form-item>
@@ -170,6 +192,201 @@
                     </el-form-item>
                   </el-form>
                 </div>
+              </el-tab-pane>
+
+              <el-tab-pane label="智能分析" name="analysis">
+                <div class="analysis-panel">
+                  <!-- 分析按钮 -->
+                  <div class="analysis-actions">
+                    <el-button 
+                      type="primary" 
+                      @click="handleAnalyze" 
+                      :loading="analyzing"
+                      :disabled="!formData.content"
+                    >
+                      <el-icon><MagicStick /></el-icon>
+                      AI 深度分析
+                    </el-button>
+                    <el-button 
+                      @click="handleQuickAnalyze"
+                      :disabled="!formData.content"
+                    >
+                      快速检查
+                    </el-button>
+                  </div>
+
+                  <!-- 快速分析结果 -->
+                  <div v-if="quickAnalysis" class="quick-analysis">
+                    <div class="quick-score">
+                      <el-progress 
+                        type="circle" 
+                        :percentage="quickAnalysis.quick_score"
+                        :color="getScoreColor(quickAnalysis.quick_score)"
+                        :width="80"
+                      />
+                      <span class="score-label">快速评分</span>
+                    </div>
+                    <div class="quick-stats">
+                      <div class="stat-item">
+                        <span class="stat-label">字符数</span>
+                        <span class="stat-value">{{ quickAnalysis.character_count }}</span>
+                      </div>
+                      <div class="stat-item">
+                        <span class="stat-label">变量数</span>
+                        <span class="stat-value">{{ quickAnalysis.variable_count }}</span>
+                      </div>
+                      <div class="stat-item">
+                        <el-tag :type="quickAnalysis.has_role ? 'success' : 'info'" size="small">
+                          {{ quickAnalysis.has_role ? '有角色设定' : '无角色设定' }}
+                        </el-tag>
+                      </div>
+                      <div class="stat-item">
+                        <el-tag :type="quickAnalysis.has_format ? 'success' : 'info'" size="small">
+                          {{ quickAnalysis.has_format ? '有格式要求' : '无格式要求' }}
+                        </el-tag>
+                      </div>
+                    </div>
+                    <div class="quick-tips" v-if="quickAnalysis.tips?.length">
+                      <div 
+                        v-for="(tip, index) in quickAnalysis.tips" 
+                        :key="index"
+                        :class="['tip-item', `tip-${tip.type}`]"
+                      >
+                        <el-icon v-if="tip.type === 'warning'"><Warning /></el-icon>
+                        <el-icon v-else-if="tip.type === 'suggestion'"><InfoFilled /></el-icon>
+                        <el-icon v-else><CircleCheck /></el-icon>
+                        <span>{{ tip.message }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- AI 深度分析结果 -->
+                  <div v-if="analysisResult" class="ai-analysis">
+                    <el-divider>AI 分析报告</el-divider>
+                    
+                    <!-- 总分 -->
+                    <div class="overall-score">
+                      <el-progress 
+                        type="dashboard" 
+                        :percentage="analysisResult.overall_score"
+                        :color="getScoreColor(analysisResult.overall_score)"
+                        :width="120"
+                      >
+                        <template #default>
+                          <span class="score-number">{{ analysisResult.overall_score }}</span>
+                          <span class="score-text">总分</span>
+                        </template>
+                      </el-progress>
+                    </div>
+
+                    <!-- 维度评分 -->
+                    <div class="dimensions">
+                      <div class="dimension-item" v-for="(dim, key) in analysisResult.dimensions" :key="key">
+                        <div class="dim-header">
+                          <span class="dim-name">{{ getDimensionName(key) }}</span>
+                          <span class="dim-score">{{ dim.score }}</span>
+                        </div>
+                        <el-progress 
+                          :percentage="dim.score" 
+                          :color="getScoreColor(dim.score)"
+                          :stroke-width="8"
+                        />
+                        <div class="dim-comment">{{ dim.comment }}</div>
+                      </div>
+                    </div>
+
+                    <!-- 优缺点 -->
+                    <div class="strengths-weaknesses">
+                      <div class="sw-section strengths" v-if="analysisResult.strengths?.length">
+                        <h4><el-icon><CircleCheckFilled /></el-icon> 优点</h4>
+                        <ul>
+                          <li v-for="(s, i) in analysisResult.strengths" :key="i">{{ s }}</li>
+                        </ul>
+                      </div>
+                      <div class="sw-section weaknesses" v-if="analysisResult.weaknesses?.length">
+                        <h4><el-icon><WarningFilled /></el-icon> 待改进</h4>
+                        <ul>
+                          <li v-for="(w, i) in analysisResult.weaknesses" :key="i">{{ w }}</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <!-- 改进建议 -->
+                    <div class="suggestions" v-if="analysisResult.suggestions?.length">
+                      <h4>改进建议</h4>
+                      <el-collapse>
+                        <el-collapse-item 
+                          v-for="(sug, i) in analysisResult.suggestions" 
+                          :key="i"
+                          :name="i"
+                        >
+                          <template #title>
+                            <el-tag 
+                              :type="sug.priority === 'high' ? 'danger' : sug.priority === 'medium' ? 'warning' : 'info'" 
+                              size="small"
+                            >
+                              {{ sug.priority === 'high' ? '高优先' : sug.priority === 'medium' ? '中优先' : '建议' }}
+                            </el-tag>
+                            <span class="sug-title">{{ sug.title }}</span>
+                          </template>
+                          <div class="sug-content">
+                            <p>{{ sug.description }}</p>
+                            <div v-if="sug.example" class="sug-example">
+                              <strong>示例：</strong>
+                              <pre>{{ sug.example }}</pre>
+                            </div>
+                          </div>
+                        </el-collapse-item>
+                      </el-collapse>
+                    </div>
+
+                    <!-- 最佳实践检查 -->
+                    <div class="best-practices" v-if="analysisResult.best_practices?.length">
+                      <h4>最佳实践检查</h4>
+                      <div class="practice-list">
+                        <div 
+                          v-for="(bp, i) in analysisResult.best_practices" 
+                          :key="i"
+                          :class="['practice-item', bp.status]"
+                        >
+                          <el-icon v-if="bp.status === 'pass'"><CircleCheckFilled /></el-icon>
+                          <el-icon v-else><CircleCloseFilled /></el-icon>
+                          <span class="practice-rule">{{ bp.rule }}</span>
+                          <span class="practice-msg">{{ bp.message }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 优化后的 Prompt -->
+                    <div class="optimized-prompt" v-if="analysisResult.optimized_prompt">
+                      <h4>优化后的 Prompt</h4>
+                      <div class="optimized-content">
+                        <pre>{{ analysisResult.optimized_prompt }}</pre>
+                        <el-button 
+                          size="small" 
+                          type="primary"
+                          @click="applyOptimizedPrompt"
+                        >
+                          应用此版本
+                        </el-button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 空状态 -->
+                  <el-empty 
+                    v-if="!quickAnalysis && !analysisResult && !analyzing" 
+                    description="点击上方按钮分析你的 Prompt"
+                  />
+                </div>
+              </el-tab-pane>
+
+              <el-tab-pane label="评论" name="comments" v-if="isEditMode">
+                <PromptComments 
+                  :prompt-id="Number(route.params.id)"
+                  :versions="versionNumbers"
+                  :is-owner="isOwner"
+                />
               </el-tab-pane>
             </el-tabs>
           </div>
@@ -294,7 +511,7 @@
       <div class="execution-history-container">
         <div v-if="executionHistoryList.length > 0" class="history-list">
           <el-card 
-            v-for="(history, index) in executionHistoryList" 
+            v-for="history in executionHistoryList" 
             :key="history.id"
             shadow="hover"
             class="history-card"
@@ -349,17 +566,21 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePromptStore } from '@/store/prompt'
 import { useConfigStore } from '@/store/config'
-import { runAPI, promptAPI, executionHistoryAPI } from '@/api'
+import { runAPI, promptAPI, executionHistoryAPI, promptAnalysisAPI, PromptAnalysisResult, QuickAnalysisResult } from '@/api'
+import { MagicStick, Warning, InfoFilled, CircleCheck, CircleCheckFilled, WarningFilled, CircleCloseFilled } from '@element-plus/icons-vue'
 import { extractVariables } from '@/utils/markdown'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Header from '@/components/Layout/Header.vue'
 import VariableInputWithFile from '@/components/VariableInputWithFile.vue'
 import ResultViewer from '@/components/ResultViewer.vue'
+import PromptComments from '@/components/PromptComments.vue'
+import { useUserStore } from '@/store/user'
 
 const route = useRoute()
 const router = useRouter()
 const promptStore = usePromptStore()
 const configStore = useConfigStore()
+const userStore = useUserStore()
 
 const activeTab = ref('variables')
 const saving = ref(false)
@@ -389,10 +610,25 @@ const executionHistoryDrawerVisible = ref(false)
 const executionHistoryList = ref<any[]>([])
 const autoShowRendered = ref(false)
 
+// 智能分析相关
+const analyzing = ref(false)
+const quickAnalysis = ref<QuickAnalysisResult | null>(null)
+const analysisResult = ref<PromptAnalysisResult | null>(null)
+
 const commonTags = ['对话', '翻译', '写作', '代码', '分析', '创意', '教育', '商业']
 
 const isEditMode = computed(() => !!route.params.id)
 const variables = computed(() => extractVariables(formData.content))
+
+// 评论相关
+const promptOwnerId = ref<number | null>(null)
+const versionNumbers = computed(() => versions.value.map((v: any) => v.version))
+const isOwner = computed(() => promptOwnerId.value === userStore.userInfo?.id)
+
+// 团队共享相关
+const canEdit = ref(true)
+const teamShared = ref(false)
+const teamInfo = ref<{ team_id: number; team_name: string; permission: string } | null>(null)
 
 // 获取当前Prompt的缓存key
 const getCacheKey = () => {
@@ -499,12 +735,18 @@ onMounted(async () => {
 async function loadPrompt() {
   const id = Number(route.params.id)
   try {
-    const prompt = await promptStore.fetchPromptDetail(id)
+    const prompt = await promptStore.fetchPromptDetail(id) as any
     formData.title = prompt.title
-    formData.content = prompt.content
+    formData.content = prompt.content || ''
     formData.description = prompt.description || ''
     formData.tags = prompt.tags || []
     formData.is_public = prompt.is_public
+    promptOwnerId.value = prompt.user_id || null
+    
+    // 设置权限信息
+    canEdit.value = prompt.can_edit !== false
+    teamShared.value = prompt.team_shared || false
+    teamInfo.value = prompt.team_info || null
   } catch (error) {
     ElMessage.error('加载失败')
     router.push('/prompts')
@@ -766,6 +1008,98 @@ function formatDate(dateString: string) {
   const minutes = String(date.getMinutes()).padStart(2, '0')
   
   return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+// ==================== 智能分析相关函数 ====================
+
+// 获取分数颜色
+function getScoreColor(score: number): string {
+  if (score >= 80) return '#67c23a'  // 绿色
+  if (score >= 60) return '#e6a23c'  // 橙色
+  return '#f56c6c'  // 红色
+}
+
+// 获取维度名称
+function getDimensionName(key: string): string {
+  const names: Record<string, string> = {
+    clarity: '清晰度',
+    structure: '结构性',
+    completeness: '完整性',
+    executability: '可执行性'
+  }
+  return names[key] || key
+}
+
+// 快速分析（本地）
+async function handleQuickAnalyze() {
+  if (!formData.content) {
+    ElMessage.warning('请先输入 Prompt 内容')
+    return
+  }
+  
+  try {
+    const response = await promptAnalysisAPI.quickAnalyze({
+      content: formData.content
+    }) as any
+    
+    if (response.data?.success) {
+      quickAnalysis.value = response.data.analysis
+      ElMessage.success('快速分析完成')
+    }
+  } catch (error) {
+    console.error('快速分析失败:', error)
+    ElMessage.error('快速分析失败')
+  }
+}
+
+// AI 深度分析
+async function handleAnalyze() {
+  if (!formData.content) {
+    ElMessage.warning('请先输入 Prompt 内容')
+    return
+  }
+  
+  analyzing.value = true
+  analysisResult.value = null
+  
+  try {
+    const response = await promptAnalysisAPI.analyze({
+      content: formData.content,
+      title: formData.title || undefined
+    }) as any
+    
+    if (response.data?.success) {
+      analysisResult.value = response.data.analysis
+      ElMessage.success('AI 分析完成')
+    } else {
+      ElMessage.error(response.data?.error || '分析失败')
+    }
+  } catch (error: any) {
+    console.error('AI 分析失败:', error)
+    ElMessage.error(error.message || 'AI 分析失败，请检查 AI 配置')
+  } finally {
+    analyzing.value = false
+  }
+}
+
+// 应用优化后的 Prompt
+function applyOptimizedPrompt() {
+  if (!analysisResult.value?.optimized_prompt) return
+  
+  ElMessageBox.confirm(
+    '确定要应用优化后的 Prompt 吗？当前内容将被替换。',
+    '应用优化',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    formData.content = analysisResult.value!.optimized_prompt
+    ElMessage.success('已应用优化后的 Prompt')
+  }).catch(() => {
+    // 用户取消
+  })
 }
 </script>
 
@@ -1250,6 +1584,341 @@ function formatDate(dateString: string) {
 .info-row .value {
   color: #24292e;
   font-weight: 600;
+}
+
+/* ==================== 智能分析面板样式 ==================== */
+.analysis-panel {
+  padding: 1rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.analysis-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 快速分析结果 */
+.quick-analysis {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.quick-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.score-label {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.quick-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.stat-value {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.quick-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tip-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.tip-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tip-suggestion {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.tip-info {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+/* AI 分析结果 */
+.ai-analysis {
+  background: white;
+  border-radius: 8px;
+}
+
+.overall-score {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.score-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.score-text {
+  font-size: 0.85rem;
+  color: #64748b;
+  display: block;
+}
+
+/* 维度评分 */
+.dimensions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.dimension-item {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.dim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.dim-name {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.dim-score {
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+.dim-comment {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.5rem;
+}
+
+/* 优缺点 */
+.strengths-weaknesses {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.sw-section {
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.sw-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+}
+
+.sw-section ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.sw-section li {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.strengths {
+  background: #f0fdf4;
+}
+
+.strengths h4 {
+  color: #166534;
+}
+
+.strengths li {
+  color: #166534;
+}
+
+.weaknesses {
+  background: #fff7ed;
+}
+
+.weaknesses h4 {
+  color: #c2410c;
+}
+
+.weaknesses li {
+  color: #c2410c;
+}
+
+/* 改进建议 */
+.suggestions {
+  margin-bottom: 1.5rem;
+}
+
+.suggestions h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.sug-title {
+  margin-left: 0.5rem;
+  font-weight: 500;
+}
+
+.sug-content {
+  padding: 0.5rem 0;
+}
+
+.sug-content p {
+  margin: 0 0 0.75rem 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.sug-example {
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.sug-example pre {
+  margin: 0.5rem 0 0 0;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  color: #1e293b;
+}
+
+/* 最佳实践检查 */
+.best-practices {
+  margin-bottom: 1.5rem;
+}
+
+.best-practices h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.practice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.practice-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.practice-item.pass {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.practice-item.fail {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.practice-rule {
+  font-weight: 600;
+}
+
+.practice-msg {
+  color: inherit;
+  opacity: 0.85;
+}
+
+/* 优化后的 Prompt */
+.optimized-prompt h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.optimized-content {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.optimized-content pre {
+  margin: 0 0 1rem 0;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #1e293b;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 只读提示条 */
+.readonly-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.readonly-banner .el-icon {
+  font-size: 1.1rem;
+  color: #d97706;
+}
+
+.readonly-banner strong {
+  color: #78350f;
 }
 </style>
 

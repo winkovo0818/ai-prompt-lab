@@ -66,7 +66,9 @@ request.interceptors.response.use(
           ElMessage.error('拒绝访问：权限不足')
           break
         case 404:
-          ElMessage.error('请求的资源不存在')
+          // 优先使用后端返回的详细错误信息
+          const notFoundMsg = error.response?.data?.detail || '请求的资源不存在'
+          ElMessage.error(notFoundMsg)
           break
         case 429:
           ElMessage.warning({

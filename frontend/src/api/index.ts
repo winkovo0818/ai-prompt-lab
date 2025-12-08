@@ -51,16 +51,24 @@ export interface PromptData {
 
 export interface PromptItem {
   id: number
-  user_id: number
+  user_id?: number
   title: string
-  content: string
+  content?: string
   description?: string
   tags?: string[]
   is_favorite: boolean
   is_public: boolean
+  is_owner?: boolean
   version: number
   created_at: string
   updated_at: string
+  // 团队共享信息
+  team_shared?: boolean
+  team_info?: {
+    team_id: number
+    team_name: string
+    permission: string
+  }
 }
 
 export interface RunPromptData {
@@ -201,7 +209,23 @@ export const adminAPI = {
     request.put<APIResponse<{ id: number }>>(`/api/admin/templates/${templateId}`, data),
   
   deleteTemplate: (templateId: number) =>
-    request.delete<APIResponse>(`/api/admin/templates/${templateId}`)
+    request.delete<APIResponse>(`/api/admin/templates/${templateId}`),
+  
+  // 团队管理
+  getTeams: (params?: { skip?: number; limit?: number; search?: string }) =>
+    request.get<APIResponse<{ items: any[]; total: number }>>('/api/admin/teams', { params }),
+  
+  getTeamDetail: (teamId: number) =>
+    request.get<APIResponse<any>>(`/api/admin/teams/${teamId}`),
+  
+  updateTeam: (teamId: number, data: any) =>
+    request.put<APIResponse<null>>(`/api/admin/teams/${teamId}`, data),
+  
+  deleteTeam: (teamId: number) =>
+    request.delete<APIResponse<null>>(`/api/admin/teams/${teamId}`),
+  
+  removeTeamMember: (teamId: number, memberId: number) =>
+    request.delete<APIResponse<null>>(`/api/admin/teams/${teamId}/members/${memberId}`)
 }
 
 // 网站公开 API
@@ -343,6 +367,62 @@ export const optimizationAPI = {
       optimization_suggestions: string[]
       expected_improvement: string
     }>>('/api/optimization/analyze', data)
+}
+
+// Prompt 分析 API（AI 智能分析）
+export interface PromptAnalysisResult {
+  overall_score: number
+  dimensions: {
+    clarity: { score: number; comment: string }
+    structure: { score: number; comment: string }
+    completeness: { score: number; comment: string }
+    executability: { score: number; comment: string }
+  }
+  strengths: string[]
+  weaknesses: string[]
+  suggestions: Array<{
+    type: string
+    priority: string
+    title: string
+    description: string
+    example?: string
+  }>
+  optimized_prompt: string
+  best_practices: Array<{
+    rule: string
+    status: 'pass' | 'fail'
+    message: string
+  }>
+}
+
+export interface QuickAnalysisResult {
+  quick_score: number
+  tips: Array<{
+    type: 'info' | 'warning' | 'suggestion'
+    message: string
+  }>
+  variable_count: number
+  character_count: number
+  has_role: boolean
+  has_format: boolean
+  has_example: boolean
+}
+
+export const promptAnalysisAPI = {
+  // AI 深度分析
+  analyze: (data: { content: string; title?: string }) =>
+    request.post<APIResponse<{
+      success: boolean
+      analysis: PromptAnalysisResult
+      tokens_used?: number
+    }>>('/api/prompt/analysis/analyze', data),
+  
+  // 快速本地分析（不调用 AI）
+  quickAnalyze: (data: { content: string }) =>
+    request.post<APIResponse<{
+      success: boolean
+      analysis: QuickAnalysisResult
+    }>>('/api/prompt/analysis/quick', data)
 }
 
 // AI 配置 API
@@ -591,5 +671,248 @@ export const fileAPI = {
   // 删除文件
   delete: (fileId: number): Promise<InterceptedResponse<any>> =>
     request.delete(`/api/files/${fileId}`) as any
+}
+
+// 使用统计 API
+export interface DailyStats {
+  date: string
+  calls: number
+  tokens: number
+  cost: number
+  avg_response_time: number
+}
+
+export interface TopPrompt {
+  prompt_id: number
+  title: string
+  use_count: number
+  total_tokens: number
+  total_cost: number
+  avg_response_time: number
+}
+
+export interface ModelUsage {
+  model: string
+  calls: number
+  tokens: number
+  cost: number
+  avg_response_time: number
+}
+
+// Prompt 评论 API
+export interface CommentUser {
+  id: number
+  username: string
+  avatar_url?: string
+}
+
+export interface PromptComment {
+  id: number
+  prompt_id: number
+  user_id: number
+  content: string
+  mentioned_user_ids?: number[]
+  version?: number
+  parent_id?: number
+  comment_type: 'comment' | 'review' | 'suggestion'
+  review_status?: 'pending' | 'approved' | 'rejected'
+  is_edited: boolean
+  created_at: string
+  updated_at?: string
+  username?: string
+  avatar_url?: string
+  mentioned_users?: CommentUser[]
+  replies?: PromptComment[]
+  reply_count: number
+}
+
+export interface CommentStats {
+  total: number
+  comments: number
+  reviews: number
+  suggestions: number
+  pending_reviews: number
+  approved_reviews: number
+  rejected_reviews: number
+}
+
+export const commentAPI = {
+  // 获取评论列表
+  getComments: (promptId: number, params?: { version?: number; comment_type?: string }) =>
+    request.get<APIResponse<PromptComment[]>>(`/api/prompt/${promptId}/comments`, { params }),
+  
+  // 创建评论
+  createComment: (promptId: number, data: {
+    content: string
+    mentioned_user_ids?: number[]
+    version?: number
+    parent_id?: number
+    comment_type?: string
+    review_status?: string
+  }) => request.post<APIResponse<PromptComment>>(`/api/prompt/${promptId}/comments`, data),
+  
+  // 更新评论
+  updateComment: (commentId: number, data: {
+    content?: string
+    review_status?: string
+  }) => request.put<APIResponse<PromptComment>>(`/api/prompt/comments/${commentId}`, data),
+  
+  // 删除评论
+  deleteComment: (commentId: number) =>
+    request.delete<APIResponse<null>>(`/api/prompt/comments/${commentId}`),
+  
+  // 获取评论统计
+  getStats: (promptId: number) =>
+    request.get<APIResponse<CommentStats>>(`/api/prompt/${promptId}/comments/stats`),
+  
+  // 搜索用户（用于@提及）
+  searchUsers: (keyword: string, limit?: number) =>
+    request.get<APIResponse<CommentUser[]>>('/api/prompt/users/search', { 
+      params: { keyword, limit } 
+    })
+}
+
+export const statisticsAPI = {
+  // 获取统计概览
+  getOverview: (days?: number) =>
+    request.get<APIResponse<{
+      total_calls: number
+      total_tokens: number
+      total_input_tokens: number
+      total_output_tokens: number
+      total_cost: number
+      avg_response_time: number
+      days: number
+    }>>('/api/statistics/overview', { params: { days } }),
+  
+  // 获取每日统计
+  getDaily: (days?: number) =>
+    request.get<APIResponse<DailyStats[]>>('/api/statistics/daily', { params: { days } }),
+  
+  // 获取最常用的 Prompt
+  getTopPrompts: (params?: { limit?: number; days?: number }) =>
+    request.get<APIResponse<TopPrompt[]>>('/api/statistics/top-prompts', { params }),
+  
+  // 获取模型使用统计
+  getModelUsage: (days?: number) =>
+    request.get<APIResponse<ModelUsage[]>>('/api/statistics/model-usage', { params: { days } }),
+  
+  // 获取每小时统计
+  getHourly: (days?: number) =>
+    request.get<APIResponse<{ hours: number[]; calls: number[] }>>('/api/statistics/hourly', { params: { days } })
+}
+
+// 团队工作区 API
+export interface TeamInfo {
+  id: number
+  name: string
+  description?: string
+  avatar_url?: string
+  owner_id: number
+  is_public: boolean
+  allow_member_invite: boolean
+  member_count: number
+  prompt_count: number
+  my_role?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TeamMember {
+  id: number
+  team_id: number
+  user_id: number
+  username: string
+  email: string
+  avatar_url?: string
+  role: string
+  status: string
+  joined_at?: string
+  invited_by_username?: string
+}
+
+export interface TeamPromptItem {
+  id: number
+  team_id: number
+  prompt_id: number
+  prompt_title: string
+  prompt_description?: string
+  permission: string
+  shared_by_username: string
+  created_at: string
+}
+
+export const teamAPI = {
+  // 获取我的团队列表
+  getMyTeams: () =>
+    request.get<APIResponse<TeamInfo[]>>('/api/team/list'),
+  
+  // 创建团队
+  createTeam: (data: {
+    name: string
+    description?: string
+    avatar_url?: string
+    is_public?: boolean
+    allow_member_invite?: boolean
+  }) => request.post<APIResponse<{ id: number; name: string }>>('/api/team', data),
+  
+  // 获取团队详情
+  getTeam: (teamId: number) =>
+    request.get<APIResponse<TeamInfo>>(`/api/team/${teamId}`),
+  
+  // 更新团队
+  updateTeam: (teamId: number, data: {
+    name?: string
+    description?: string
+    avatar_url?: string
+    is_public?: boolean
+    allow_member_invite?: boolean
+  }) => request.put<APIResponse<null>>(`/api/team/${teamId}`, data),
+  
+  // 删除团队
+  deleteTeam: (teamId: number) =>
+    request.delete<APIResponse<null>>(`/api/team/${teamId}`),
+  
+  // 获取团队成员
+  getMembers: (teamId: number) =>
+    request.get<APIResponse<TeamMember[]>>(`/api/team/${teamId}/members`),
+  
+  // 添加成员
+  addMember: (teamId: number, data: {
+    user_id?: number
+    email?: string
+    role?: string
+  }) => request.post<APIResponse<null>>(`/api/team/${teamId}/members`, data),
+  
+  // 更新成员角色
+  updateMember: (teamId: number, memberId: number, data: { role: string }) =>
+    request.put<APIResponse<null>>(`/api/team/${teamId}/members/${memberId}`, data),
+  
+  // 移除成员
+  removeMember: (teamId: number, memberId: number) =>
+    request.delete<APIResponse<null>>(`/api/team/${teamId}/members/${memberId}`),
+  
+  // 获取团队 Prompt
+  getTeamPrompts: (teamId: number, params?: { skip?: number; limit?: number }) =>
+    request.get<APIResponse<{ items: TeamPromptItem[]; total: number }>>(`/api/team/${teamId}/prompts`, { params }),
+  
+  // 共享 Prompt 到团队
+  sharePrompt: (teamId: number, data: { prompt_id: number; permission?: string }) =>
+    request.post<APIResponse<null>>(`/api/team/${teamId}/prompts`, data),
+  
+  // 从团队移除 Prompt
+  removePrompt: (teamId: number, teamPromptId: number) =>
+    request.delete<APIResponse<null>>(`/api/team/${teamId}/prompts/${teamPromptId}`),
+  
+  // 创建邀请链接
+  createInvite: (teamId: number, data?: {
+    role?: string
+    expires_hours?: number
+    max_uses?: number
+  }) => request.post<APIResponse<{ invite_code: string; expires_at?: string; max_uses: number }>>(`/api/team/${teamId}/invites`, data || {}),
+  
+  // 通过邀请码加入团队
+  joinByInvite: (inviteCode: string) =>
+    request.post<APIResponse<{ team_id: number; team_name: string }>>(`/api/team/join/${inviteCode}`)
 }
 
