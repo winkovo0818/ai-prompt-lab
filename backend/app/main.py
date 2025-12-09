@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .core.database import create_db_and_tables
-from .api import auth, prompt, run, abtest, ai_config, execution_history, admin, site, template, batch_test, optimization, security, system_config, file_upload, prompt_analysis, statistics, comment, team
+from .api import auth, prompt, run, abtest, ai_config, execution_history, admin, site, template, batch_test, optimization, security, system_config, file_upload, prompt_analysis, statistics, comment, team, quota
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -63,6 +63,7 @@ app.include_router(prompt_analysis.router, prefix="/api/prompt", tags=["Prompt�
 app.include_router(statistics.router)
 app.include_router(comment.router)
 app.include_router(team.router)
+app.include_router(quota.router)
 
 
 @app.on_event("startup")

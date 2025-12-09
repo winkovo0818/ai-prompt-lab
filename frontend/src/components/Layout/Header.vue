@@ -53,6 +53,10 @@
                 <el-icon><UserFilled /></el-icon>
                 团队管理
               </el-dropdown-item>
+              <el-dropdown-item @click="router.push('/admin/quota')">
+                <el-icon><Histogram /></el-icon>
+                配额管理
+              </el-dropdown-item>
           <el-dropdown-item divided @click="router.push('/admin/security-config')">
             <el-icon><Lock /></el-icon>
             安全管理
@@ -226,6 +230,7 @@ const adminItems = [
   { name: 'Prompt管理', path: '/admin/prompts', icon: 'DocumentCopy' },
   { name: '模板库管理', path: '/admin/templates', icon: 'Collection' },
   { name: '团队管理', path: '/admin/teams', icon: 'UserFilled' },
+  { name: '配额管理', path: '/admin/quota', icon: 'Histogram' },
   { name: '安全管理', path: '/admin/security-config', icon: 'Lock' },
   { name: '网站设置', path: '/admin/site-settings', icon: 'Setting' }
 ]

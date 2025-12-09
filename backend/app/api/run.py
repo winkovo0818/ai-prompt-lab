@@ -13,6 +13,7 @@ from ..models.uploaded_file import UploadedFile
 from ..services.openai_service import OpenAIService
 from ..services.rate_limit import rate_limiter
 from ..services.file_service import FileService
+from ..services.quota_service import QuotaService
 from ..utils.response import success_response, error_response
 from ..utils.token_counter import count_tokens, analyze_prompt_complexity
 
@@ -31,14 +32,14 @@ class RunPromptRequest(BaseModel):
 
 
 def replace_variables(content: str, variables: Dict[str, str]) -> str:
-    """替换 Prompt 中的变量"""
+    """替换 Prompt 中的变量（支持简单格式和增强格式）"""
     if not variables:
         return content
     
     result = content
     for key, value in variables.items():
-        # 支持 {{变量名}} 格式
-        pattern = r'\{\{\s*' + re.escape(key) + r'\s*\}\}'
+        # 支持简单格式 {{变量名}} 和增强格式 {{变量名:类型:默认值:选项}}
+        pattern = r'\{\{\s*' + re.escape(key) + r'(?::[^}]*)?\s*\}\}'
         result = re.sub(pattern, value, result)
     
     return result
@@ -52,10 +53,15 @@ async def run_prompt(
 ):
     """执行单个 Prompt"""
     
-    # 检查频率限制
+    # 检查频率限制（保留原有逻辑）
     allowed, error_msg = rate_limiter.check_rate_limit(current_user.id)
     if not allowed:
         return error_response(code=3001, message=error_msg)
+    
+    # 检查配额限制
+    quota_allowed, quota_error = QuotaService.check_quota(db, current_user.id)
+    if not quota_allowed:
+        return error_response(code=3006, message=quota_error)
     
     # 获取 Prompt 内容
     prompt_content = ""
@@ -172,6 +178,19 @@ async def run_prompt(
     except Exception as e:
         print(f"⚠️ 保存执行历史失败: {str(e)}")
         # 不影响主流程，继续返回结果
+    
+    # 记录配额使用量
+    try:
+        QuotaService.record_usage(
+            db=db,
+            user_id=current_user.id,
+            input_tokens=result["input_tokens"],
+            output_tokens=result["output_tokens"],
+            cost=result["cost"],
+            model=request.model
+        )
+    except Exception as e:
+        print(f"⚠️ 记录配额使用量失败: {str(e)}")
     
     # 构造响应
     response_data = {

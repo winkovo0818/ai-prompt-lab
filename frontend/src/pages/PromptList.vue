@@ -343,10 +343,11 @@ async function handleDelete(id: number) {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
+  padding: 24px 32px;
 }
 
 .main-content::-webkit-scrollbar {
@@ -485,9 +486,21 @@ async function handleDelete(id: number) {
 
 .prompts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   min-height: 200px;
+}
+
+@media (max-width: 1200px) {
+  .prompts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .prompts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pagination {

@@ -49,15 +49,23 @@
                 type="primary" 
                 :loading="saving"
                 :disabled="!canEdit"
-                :title="canEdit ? '' : '没有编辑权限'"
+                :title="canEdit ? 'Ctrl+S' : '没有编辑权限'"
               >
                 <el-icon><DocumentChecked /></el-icon>
                 保存
               </el-button>
-              <el-button @click="handleRun" type="success" :loading="running">
+              <el-dropdown split-button type="success" @click="handleRun" :loading="running" title="Ctrl+Enter">
                 <el-icon><CaretRight /></el-icon>
                 运行
-              </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="showMultiModelDialog">
+                      <el-icon><Operation /></el-icon>
+                      多模型对比
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </div>
         </div>
@@ -93,17 +101,13 @@
                 </el-form-item>
 
                 <el-form-item label="Prompt 内容">
-                  <el-input
+                  <PromptCodeEditor
                     v-model="formData.content"
-                    type="textarea"
-                    :rows="15"
                     placeholder="输入你的 Prompt，使用 {{变量名}} 来添加变量"
-                    @input="handleContentChange"
+                    :rows="15"
                     :disabled="!canEdit"
+                    @input="handleContentChange"
                   />
-                  <div class="text-xs text-gray-500 mt-1">
-                    <span v-pre>提示：使用 {{变量名}} 语法添加可替换的变量</span>
-                  </div>
                 </el-form-item>
 
                 <el-form-item label="标签">
@@ -139,6 +143,7 @@
               <el-tab-pane label="变量配置" name="variables">
                 <VariableInputWithFile
                   :variables="variables"
+                  :content="formData.content"
                   v-model="variableValues"
                   v-model:file-model-value="fileVariableValues"
                 />
@@ -564,22 +569,138 @@
         <el-empty v-else description="暂无执行历史" />
       </div>
     </el-drawer>
+
+    <!-- 多模型测试对话框 -->
+    <el-dialog v-model="multiModelDialogVisible" title="多模型对比测试" width="900px" top="5vh">
+      <div class="multi-model-dialog">
+        <div class="model-selection">
+          <div class="selection-header">
+            <span class="title">选择要对比的模型</span>
+            <span class="subtitle">至少选择 2 个模型</span>
+          </div>
+          <div class="model-grid">
+            <div 
+              v-for="model in configStore.availableModels" 
+              :key="model.id"
+              class="model-card"
+              :class="{ selected: selectedModels.includes(model.id) }"
+              @click="toggleModel(model.id)"
+            >
+              <el-checkbox 
+                :model-value="selectedModels.includes(model.id)"
+                @click.stop
+                @change="toggleModel(model.id)"
+              />
+              <div class="model-info">
+                <div class="model-name">{{ model.name }}</div>
+                <div class="model-desc">{{ model.description || model.provider }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="selection-status">
+            已选择 <strong>{{ selectedModels.length }}</strong> 个模型
+          </div>
+        </div>
+        
+        <!-- 测试结果 -->
+        <div v-if="multiModelResults.length > 0" class="multi-model-results">
+          <el-divider content-position="left">
+            <el-icon><DataAnalysis /></el-icon>
+            对比结果
+          </el-divider>
+          
+          <!-- 统计对比表 -->
+          <div class="compare-stats-table">
+            <el-table :data="multiModelResults" stripe size="small">
+              <el-table-column prop="model" label="模型" width="180">
+                <template #default="{ row }">
+                  <div class="model-cell">
+                    <el-tag :type="row.success ? 'primary' : 'danger'" size="small">
+                      {{ row.model }}
+                    </el-tag>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="80" align="center">
+                <template #default="{ row }">
+                  <el-icon v-if="row.success" color="#67c23a"><CircleCheckFilled /></el-icon>
+                  <el-icon v-else color="#f56c6c"><CircleCloseFilled /></el-icon>
+                </template>
+              </el-table-column>
+              <el-table-column label="耗时" width="100" align="center">
+                <template #default="{ row }">
+                  <span v-if="row.success">{{ row.time.toFixed(2) }}s</span>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="Token" width="100" align="center">
+                <template #default="{ row }">
+                  <span v-if="row.success">{{ row.data?.total_tokens }}</span>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="成本" width="100" align="center">
+                <template #default="{ row }">
+                  <span v-if="row.success">${{ row.data?.cost?.toFixed(4) }}</span>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 输出对比 -->
+          <div class="compare-outputs">
+            <div 
+              v-for="result in multiModelResults" 
+              :key="result.model" 
+              class="output-panel"
+            >
+              <div class="output-header">
+                <span class="output-model">{{ result.model }}</span>
+                <el-tag v-if="result.success" type="success" size="small">成功</el-tag>
+                <el-tag v-else type="danger" size="small">失败</el-tag>
+              </div>
+              <div v-if="result.success" class="output-content">
+                <ResultViewer :result="{ output: result.data?.output }" />
+              </div>
+              <div v-else class="output-error">
+                <el-icon><WarningFilled /></el-icon>
+                {{ result.error }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <el-button @click="multiModelDialogVisible = false">关闭</el-button>
+        <el-button 
+          type="primary" 
+          @click="runMultiModelTest" 
+          :loading="multiModelRunning"
+          :disabled="selectedModels.length < 2"
+        >
+          开始测试
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePromptStore } from '@/store/prompt'
 import { useConfigStore } from '@/store/config'
 import { runAPI, promptAPI, executionHistoryAPI, promptAnalysisAPI, PromptAnalysisResult, QuickAnalysisResult } from '@/api'
-import { MagicStick, Warning, InfoFilled, CircleCheck, CircleCheckFilled, WarningFilled, CircleCloseFilled, Download } from '@element-plus/icons-vue'
+import { MagicStick, Warning, InfoFilled, CircleCheck, CircleCheckFilled, WarningFilled, CircleCloseFilled, Download, Operation, DataAnalysis } from '@element-plus/icons-vue'
 import { extractVariables } from '@/utils/markdown'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Header from '@/components/Layout/Header.vue'
 import VariableInputWithFile from '@/components/VariableInputWithFile.vue'
 import ResultViewer from '@/components/ResultViewer.vue'
 import PromptComments from '@/components/PromptComments.vue'
+import PromptCodeEditor from '@/components/PromptCodeEditor.vue'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()
@@ -635,6 +756,12 @@ const isOwner = computed(() => promptOwnerId.value === userStore.userInfo?.id)
 const canEdit = ref(true)
 const teamShared = ref(false)
 const teamInfo = ref<{ team_id: number; team_name: string; permission: string } | null>(null)
+
+// 多模型测试相关
+const multiModelDialogVisible = ref(false)
+const selectedModels = ref<string[]>([])
+const multiModelRunning = ref(false)
+const multiModelResults = ref<any[]>([])
 
 // 获取当前Prompt的缓存key
 const getCacheKey = () => {
@@ -715,7 +842,96 @@ watch(fileVariableValues, () => {
   saveVariableValuesToCache()
 }, { deep: true })
 
+// ==================== 自动保存草稿 ====================
+const DRAFT_KEY = 'prompt_draft'
+const DRAFT_INTERVAL = 30000 // 30秒自动保存
+const lastSavedAt = ref<string | null>(null)
+const hasDraft = ref(false)
+let autoSaveTimer: ReturnType<typeof setInterval> | null = null
+
+// 获取草稿
+function getDraft() {
+  try {
+    const draft = localStorage.getItem(DRAFT_KEY)
+    if (draft) {
+      return JSON.parse(draft)
+    }
+  } catch (e) {
+    console.error('读取草稿失败:', e)
+  }
+  return null
+}
+
+// 保存草稿
+function saveDraft() {
+  // 只在新建模式下保存草稿
+  if (isEditMode.value) return
+  
+  // 如果没有内容，不保存
+  if (!formData.title && !formData.content) return
+  
+  try {
+    const draft = {
+      title: formData.title,
+      content: formData.content,
+      description: formData.description,
+      tags: formData.tags,
+      is_public: formData.is_public,
+      savedAt: new Date().toISOString()
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    lastSavedAt.value = new Date().toLocaleTimeString('zh-CN')
+    console.log('草稿已保存:', lastSavedAt.value)
+  } catch (e) {
+    console.error('保存草稿失败:', e)
+  }
+}
+
+// 恢复草稿
+function restoreDraft() {
+  const draft = getDraft()
+  if (draft) {
+    formData.title = draft.title || ''
+    formData.content = draft.content || ''
+    formData.description = draft.description || ''
+    formData.tags = draft.tags || []
+    formData.is_public = draft.is_public || false
+    ElMessage.success('已恢复草稿')
+    hasDraft.value = false
+  }
+}
+
+// 清除草稿
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY)
+  hasDraft.value = false
+}
+
+// 启动自动保存
+function startAutoSave() {
+  if (autoSaveTimer) return
+  autoSaveTimer = setInterval(saveDraft, DRAFT_INTERVAL)
+}
+
+// 停止自动保存
+function stopAutoSave() {
+  if (autoSaveTimer) {
+    clearInterval(autoSaveTimer)
+    autoSaveTimer = null
+  }
+}
+
+// 监听表单变化，启动自动保存
+watch(() => [formData.title, formData.content], () => {
+  if (!isEditMode.value && (formData.title || formData.content)) {
+    startAutoSave()
+  }
+}, { deep: true })
+
 onMounted(async () => {
+  // 添加键盘快捷键监听
+  window.addEventListener('keydown', handleKeyDown)
+  
   try {
     await configStore.loadAvailableModels()
     console.log('✅ loadAvailableModels 完成')
@@ -735,6 +951,55 @@ onMounted(async () => {
     if (route.query.showVersions === 'true') {
       await showVersionHistory()
     }
+  } else {
+    // 新建模式：检查是否有草稿
+    const draft = getDraft()
+    if (draft && (draft.title || draft.content)) {
+      hasDraft.value = true
+      // 提示用户是否恢复草稿
+      ElMessageBox.confirm(
+        `发现上次未保存的草稿（保存于 ${new Date(draft.savedAt).toLocaleString('zh-CN')}），是否恢复？`,
+        '发现草稿',
+        {
+          confirmButtonText: '恢复草稿',
+          cancelButtonText: '忽略',
+          type: 'info'
+        }
+      ).then(() => {
+        restoreDraft()
+      }).catch(() => {
+        clearDraft()
+      })
+    }
+  }
+})
+
+// 组件卸载时停止自动保存
+// 键盘快捷键处理
+function handleKeyDown(e: KeyboardEvent) {
+  // Ctrl+S 保存
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    if (canEdit.value && !saving.value) {
+      handleSave()
+    }
+  }
+  // Ctrl+Enter 运行
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault()
+    if (!running.value) {
+      handleRun()
+    }
+  }
+}
+
+onUnmounted(() => {
+  stopAutoSave()
+  // 移除键盘事件监听
+  window.removeEventListener('keydown', handleKeyDown)
+  // 页面离开前保存一次草稿
+  if (!isEditMode.value) {
+    saveDraft()
   }
 })
 
@@ -775,6 +1040,9 @@ async function handleSave() {
       await promptStore.updatePrompt(Number(route.params.id), formData)
     } else {
       const newPrompt = await promptStore.createPrompt(formData)
+      // 保存成功后清除草稿
+      clearDraft()
+      stopAutoSave()
       router.replace(`/editor/${newPrompt.id}`)
     }
   } catch (error) {
@@ -849,6 +1117,74 @@ async function handleDelete() {
       console.error('删除失败:', error)
       // 错误已在 store 中处理
     }
+  }
+}
+
+// 多模型测试相关函数
+function showMultiModelDialog() {
+  if (!formData.content) {
+    ElMessage.warning('请先输入 Prompt 内容')
+    return
+  }
+  multiModelDialogVisible.value = true
+  selectedModels.value = []
+  multiModelResults.value = []
+}
+
+function toggleModel(modelId: string) {
+  const index = selectedModels.value.indexOf(modelId)
+  if (index > -1) {
+    selectedModels.value.splice(index, 1)
+  } else {
+    selectedModels.value.push(modelId)
+  }
+}
+
+async function runMultiModelTest() {
+  if (selectedModels.value.length < 2) {
+    ElMessage.warning('请至少选择 2 个模型进行对比')
+    return
+  }
+  
+  multiModelRunning.value = true
+  multiModelResults.value = []
+  
+  try {
+    // 并行执行多个模型
+    const promises = selectedModels.value.map(async (modelId) => {
+      const startTime = Date.now()
+      try {
+        const response = await runAPI.execute({
+          prompt_id: isEditMode.value ? Number(route.params.id) : undefined,
+          prompt_content: formData.content,
+          variables: variableValues.value,
+          file_variables: fileVariableValues.value,
+          model: modelId,
+          temperature: configStore.temperature,
+          max_tokens: configStore.maxTokens
+        })
+        return {
+          model: modelId,
+          success: true,
+          data: response.data,
+          time: (Date.now() - startTime) / 1000
+        }
+      } catch (error: any) {
+        return {
+          model: modelId,
+          success: false,
+          error: error.message || '执行失败',
+          time: (Date.now() - startTime) / 1000
+        }
+      }
+    })
+    
+    multiModelResults.value = await Promise.all(promises)
+    ElMessage.success('多模型测试完成')
+  } catch (error) {
+    ElMessage.error('测试失败')
+  } finally {
+    multiModelRunning.value = false
   }
 }
 
@@ -1332,7 +1668,7 @@ ${report.optimized_prompt}
 
 .form-section {
   max-width: 900px;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .form-section :deep(.el-form-item__label) {
@@ -1343,47 +1679,58 @@ ${report.optimized_prompt}
 }
 
 .form-section :deep(.el-input__wrapper) {
-  box-shadow: none;
-  border-radius: 6px;
-  transition: all 0.15s;
-  background-color: #ffffff;
-  border: 1px solid #d1d5da;
+  box-shadow: none !important;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background-color: #fafbfc;
+  border: 1px solid #e1e4e8 !important;
+  padding: 8px 12px;
 }
 
 .form-section :deep(.el-input__wrapper:hover) {
-  border-color: #a8adb3;
+  border-color: #c8d1da !important;
+  background-color: #ffffff;
 }
 
 .form-section :deep(.el-input__wrapper.is-focus) {
-  border-color: #0366d6;
-  box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+  border-color: #409eff !important;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1) !important;
 }
 
 .form-section :deep(.el-input__inner) {
   color: #24292e;
-  font-size: 0.9rem;
+  font-size: 14px;
+}
+
+.form-section :deep(.el-textarea) {
+  --el-input-border-color: transparent;
 }
 
 .form-section :deep(.el-textarea__inner) {
-  box-shadow: none;
-  border-radius: 6px;
-  font-family: 'Consolas', 'Monaco', 'SF Mono', 'Courier New', monospace;
-  line-height: 1.6;
-  transition: all 0.15s;
-  background-color: #ffffff;
+  box-shadow: none !important;
+  border-radius: 8px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+  line-height: 1.7;
+  transition: all 0.2s ease;
+  background-color: #fafbfc;
   color: #24292e;
   font-size: 14px;
-  border: 1px solid #d1d5da;
-  padding: 10px 12px;
+  border: 1px solid #e1e4e8 !important;
+  padding: 12px 14px;
+  resize: vertical;
 }
 
 .form-section :deep(.el-textarea__inner:hover) {
-  border-color: #a8adb3;
+  border-color: #c8d1da !important;
+  background-color: #ffffff;
 }
 
 .form-section :deep(.el-textarea__inner:focus) {
-  border-color: #0366d6;
-  box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+  border-color: #409eff !important;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1) !important;
+  outline: none;
 }
 
 .form-section :deep(.el-textarea__inner::placeholder),
@@ -1393,6 +1740,10 @@ ${report.optimized_prompt}
 }
 
 .form-section :deep(.el-select) {
+  width: 100%;
+}
+
+.form-section :deep(.el-form-item__content) {
   width: 100%;
 }
 
@@ -2095,6 +2446,142 @@ ${report.optimized_prompt}
   .toolbar .space-x-2 .el-button {
     padding: 8px 12px;
   }
+}
+
+/* 多模型测试对话框样式 */
+.multi-model-dialog .model-selection {
+  margin-bottom: 20px;
+}
+
+.multi-model-dialog .selection-header {
+  margin-bottom: 16px;
+}
+
+.multi-model-dialog .selection-header .title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.multi-model-dialog .selection-header .subtitle {
+  font-size: 13px;
+  color: #909399;
+  margin-left: 8px;
+}
+
+.multi-model-dialog .model-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.multi-model-dialog .model-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2px solid #e4e7ed;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fafbfc;
+}
+
+.multi-model-dialog .model-card:hover {
+  border-color: #c0c4cc;
+  background: #fff;
+}
+
+.multi-model-dialog .model-card.selected {
+  border-color: #409eff;
+  background: #ecf5ff;
+}
+
+.multi-model-dialog .model-info {
+  flex: 1;
+}
+
+.multi-model-dialog .model-info .model-name {
+  font-weight: 600;
+  color: #303133;
+  font-size: 14px;
+}
+
+.multi-model-dialog .model-info .model-desc {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 2px;
+}
+
+.multi-model-dialog .selection-status {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #606266;
+}
+
+/* 对比统计表 */
+.multi-model-dialog .compare-stats-table {
+  margin-bottom: 20px;
+}
+
+.multi-model-dialog .compare-stats-table :deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.multi-model-dialog .model-cell {
+  font-weight: 500;
+}
+
+/* 输出对比 */
+.multi-model-dialog .compare-outputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 16px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.multi-model-dialog .output-panel {
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.multi-model-dialog .output-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.multi-model-dialog .output-model {
+  font-weight: 600;
+  font-size: 14px;
+  color: #303133;
+}
+
+.multi-model-dialog .output-content {
+  padding: 0;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.multi-model-dialog .output-content :deep(.result-viewer) {
+  border: none;
+  border-radius: 0;
+}
+
+.multi-model-dialog .output-error {
+  padding: 20px;
+  color: #f56c6c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
 }
 </style>
 

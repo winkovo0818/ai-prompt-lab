@@ -2,6 +2,7 @@
 from typing import Optional
 from datetime import datetime
 from sqlmodel import Field, SQLModel
+from sqlalchemy import Column, Text
 
 
 class UploadedFile(SQLModel, table=True):
@@ -15,7 +16,7 @@ class UploadedFile(SQLModel, table=True):
     file_type: str = Field(max_length=50)  # 文件类型（image, text, pdf, etc.）
     mime_type: str = Field(max_length=100)  # MIME 类型
     file_size: int  # 文件大小（字节）
-    extracted_text: Optional[str] = Field(default=None)  # 提取的文本内容
+    extracted_text: Optional[str] = Field(default=None, sa_column=Column(Text))  # 提取的文本内容(TEXT类型)
     is_deleted: bool = Field(default=False)  # 软删除标记
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

@@ -8,68 +8,106 @@
       >
         <div class="variable-header">
           <div class="variable-label">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
-            </svg>
-            <span>{{ varName }}</span>
+            <el-icon class="var-icon"><Ticket /></el-icon>
+            <span class="var-name">{{ varName }}</span>
+            <el-tag 
+              v-if="getVarInfo(varName).type !== 'text'" 
+              size="small" 
+              :type="getVarTypeTagType(getVarInfo(varName).type)"
+            >
+              {{ getVarTypeLabel(getVarInfo(varName).type) }}
+            </el-tag>
+            <span v-if="getVarInfo(varName).required" class="required-star">*</span>
           </div>
           
-          <!-- 切换输入类型按钮 -->
-          <el-button-group size="small">
-            <el-button 
-              :type="inputType[varName] === 'text' ? 'primary' : ''" 
+          <!-- 切换输入类型按钮（仅非 select/number 类型显示） -->
+          <div 
+            v-if="!['select', 'number'].includes(getVarInfo(varName).type)"
+            class="type-switch"
+          >
+            <span 
+              :class="['switch-item', { active: inputType[varName] === 'text' }]"
               @click="setInputType(varName, 'text')"
-            >
-              文本
-            </el-button>
-            <el-button 
-              :type="inputType[varName] === 'file' ? 'primary' : ''" 
+            >文本</span>
+            <span 
+              :class="['switch-item', { active: inputType[varName] === 'file' }]"
               @click="setInputType(varName, 'file')"
-            >
-              文件
-            </el-button>
-          </el-button-group>
+            >文件</span>
+          </div>
         </div>
 
         <!-- 文本输入 -->
         <div v-if="inputType[varName] === 'text'" class="input-wrapper">
-          <el-input
+          <!-- 下拉选择 -->
+          <el-select
+            v-if="getVarInfo(varName).type === 'select' && getVarInfo(varName).options.length > 0"
             v-model="variableValues[varName]"
-            :placeholder="`请输入 ${varName} 的值`"
+            :placeholder="getVarInfo(varName).placeholder"
+            @change="handleInput"
+            class="variable-select"
+          >
+            <el-option
+              v-for="opt in getVarInfo(varName).options"
+              :key="opt"
+              :label="opt"
+              :value="opt"
+            />
+          </el-select>
+          <!-- 数字输入 -->
+          <el-input-number
+            v-else-if="getVarInfo(varName).type === 'number'"
+            v-model.number="variableValues[varName]"
+            :placeholder="getVarInfo(varName).placeholder"
+            @change="handleInput"
+            class="variable-number"
+            controls-position="right"
+          />
+          <!-- 多行文本 -->
+          <el-input
+            v-else-if="getVarInfo(varName).type === 'textarea'"
+            v-model="variableValues[varName]"
+            :placeholder="getVarInfo(varName).placeholder"
             @input="handleInput"
             type="textarea"
-            :autosize="{ minRows: 2, maxRows: 6 }"
+            :autosize="{ minRows: 3, maxRows: 8 }"
             class="variable-textarea"
           />
+          <!-- 单行文本（默认） -->
+          <el-input
+            v-else
+            v-model="variableValues[varName]"
+            :placeholder="getVarInfo(varName).placeholder"
+            @input="handleInput"
+            :type="getVarInfo(varName).type === 'textarea' ? 'textarea' : 'text'"
+            :autosize="getVarInfo(varName).type === 'textarea' ? { minRows: 2, maxRows: 6 } : undefined"
+            class="variable-input"
+          />
+          <!-- 必填标记 -->
+          <span v-if="getVarInfo(varName).required" class="required-mark">*必填</span>
         </div>
 
         <!-- 文件上传 -->
         <div v-else class="file-upload-wrapper">
           <!-- 已上传的文件显示 -->
           <div v-if="fileVariables[varName]" class="uploaded-file">
-            <div class="file-info">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-              </svg>
-              <span class="file-name">{{ uploadedFiles[fileVariables[varName]]?.filename || '文件' }}</span>
-              <span class="file-type">{{ uploadedFiles[fileVariables[varName]]?.file_type }}</span>
+            <div class="file-icon">
+              <el-icon size="20" color="#67c23a"><Document /></el-icon>
             </div>
-            <el-button 
-              size="small" 
-              type="danger" 
+            <div class="file-details">
+              <span class="file-name">{{ uploadedFiles[fileVariables[varName]]?.filename || '文件' }}</span>
+              <span class="file-meta">{{ uploadedFiles[fileVariables[varName]]?.file_type }}</span>
+            </div>
+            <el-icon 
+              class="remove-icon"
               @click="removeFile(varName)"
-              text
-            >
-              移除
-            </el-button>
+            ><Close /></el-icon>
           </div>
 
           <!-- 文件上传按钮 -->
           <el-upload
             v-else
-            :action="`${API_BASE_URL}/files/upload`"
-            :headers="{ Authorization: `Bearer ${token}` }"
+            :action="`${API_BASE_URL}/api/files/upload`"
+            :headers="{ Authorization: `Bearer ${getToken()}` }"
             :show-file-list="false"
             :on-success="(response: any) => handleUploadSuccess(varName, response)"
             :on-error="handleUploadError"
@@ -96,7 +134,11 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
       </svg>
       <p>
-        在 Prompt 中使用 <code v-pre>{{变量名}}</code> 来添加变量
+        在 Prompt 中使用 <code v-pre>{{变量名}}</code> 来添加变量<br/>
+        <small style="color: #909399;">
+          增强格式：<code v-pre>{{名称:类型:默认值:选项}}</code><br/>
+          类型：text / textarea / number / select / file
+        </small>
       </p>
     </div>
 
@@ -112,25 +154,78 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Ticket, Document, Close } from '@element-plus/icons-vue'
 import { type UploadedFileItem } from '@/api'
+import { extractVariablesEnhanced, type VariableInfo } from '@/utils/markdown'
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
 
 const props = defineProps<{
   variables: string[]
+  content?: string  // Prompt 内容，用于解析增强变量
   modelValue?: Record<string, string>
   fileModelValue?: Record<string, number>
 }>()
+
+// 解析增强变量信息
+const enhancedVariables = computed<VariableInfo[]>(() => {
+  if (props.content) {
+    return extractVariablesEnhanced(props.content)
+  }
+  // 兼容旧格式：转换简单变量名为 VariableInfo
+  return props.variables.map(name => ({
+    name,
+    type: 'text' as const,
+    defaultValue: '',
+    options: [],
+    required: false,
+    placeholder: `请输入 ${name} 的值`
+  }))
+})
+
+// 获取变量信息
+function getVarInfo(varName: string): VariableInfo {
+  return enhancedVariables.value.find(v => v.name === varName) || {
+    name: varName,
+    type: 'text',
+    defaultValue: '',
+    options: [],
+    required: false,
+    placeholder: `请输入 ${varName} 的值`
+  }
+}
+
+// 获取变量类型标签
+function getVarTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    'textarea': '多行',
+    'number': '数字',
+    'select': '选择',
+    'file': '文件'
+  }
+  return labels[type] || type
+}
+
+// 获取变量类型标签颜色
+function getVarTypeTagType(type: string): string {
+  const types: Record<string, string> = {
+    'textarea': 'info',
+    'number': 'warning',
+    'select': 'success',
+    'file': ''
+  }
+  return types[type] || ''
+}
 
 const emit = defineEmits<{
   'update:modelValue': [value: Record<string, string>]
   'update:fileModelValue': [value: Record<string, number>]
 }>()
 
-// 获取 token
-const token = localStorage.getItem('token')
+// 动态获取 token
+const getToken = () => localStorage.getItem('ai_prompt_lab_token') || ''
 
 // 变量值
 const variableValues = ref<Record<string, string>>(props.modelValue || {})
@@ -227,14 +322,16 @@ watch(
   () => props.variables,
   (newVars) => {
     newVars.forEach(varName => {
-      // 初始化输入类型
+      const varInfo = getVarInfo(varName)
+      
+      // 初始化输入类型（根据变量定义的类型）
       if (!(varName in inputType.value)) {
-        inputType.value[varName] = 'text'
+        inputType.value[varName] = varInfo.type === 'file' ? 'file' : 'text'
       }
       
-      // 初始化变量值
+      // 初始化变量值（使用默认值）
       if (!(varName in variableValues.value)) {
-        variableValues.value[varName] = ''
+        variableValues.value[varName] = varInfo.defaultValue || ''
       }
     })
 
@@ -246,6 +343,9 @@ watch(
         delete inputType.value[key]
       }
     })
+    
+    // 通知父组件初始值
+    emit('update:modelValue', variableValues.value)
   },
   { immediate: true }
 )
@@ -321,15 +421,69 @@ function handleFill() {
   color: #24292e;
 }
 
-.variable-label svg {
-  width: 16px;
-  height: 16px;
+.var-icon {
   color: #0366d6;
-  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.var-name {
+  color: #24292e;
+}
+
+.required-star {
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+.type-switch {
+  display: flex;
+  gap: 0;
+  background: #f0f2f5;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.switch-item {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #606266;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.switch-item:hover {
+  color: #409eff;
+}
+
+.switch-item.active {
+  background: #409eff;
+  color: white;
 }
 
 .input-wrapper {
   width: 100%;
+  position: relative;
+}
+
+.variable-select {
+  width: 100%;
+}
+
+.variable-number {
+  width: 100%;
+}
+
+.variable-input :deep(.el-input__wrapper) {
+  border-radius: 6px;
+}
+
+.required-mark {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  font-size: 12px;
+  color: #f56c6c;
 }
 
 .variable-textarea :deep(.el-textarea__inner) {
@@ -363,51 +517,66 @@ function handleFill() {
 .uploaded-file {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: #f6f8fa;
-  border: 1px solid #e1e4e8;
-  border-radius: 6px;
-  transition: all 0.15s;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
 .uploaded-file:hover {
-  border-color: #d1d5da;
-  background: #f3f4f6;
+  border-color: #4ade80;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
 }
 
-.file-info {
+.file-icon {
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex: 1;
-  min-width: 0;
+  justify-content: center;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.file-info svg {
-  width: 20px;
-  height: 20px;
-  color: #3b82f6;
-  flex-shrink: 0;
+.file-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .file-name {
-  font-size: 0.875rem;
+  font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: #166534;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.file-type {
-  padding: 2px 8px;
-  background: #dbeafe;
-  color: #1e40af;
-  font-size: 0.75rem;
-  font-weight: 500;
+.file-meta {
+  font-size: 11px;
+  color: #16a34a;
+  text-transform: uppercase;
+}
+
+.remove-icon {
+  width: 20px;
+  height: 20px;
+  padding: 4px;
+  color: #9ca3af;
+  cursor: pointer;
   border-radius: 4px;
-  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.remove-icon:hover {
+  color: #ef4444;
+  background: #fef2f2;
 }
 
 .file-uploader {
