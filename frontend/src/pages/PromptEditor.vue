@@ -262,7 +262,13 @@
 
                   <!-- AI 深度分析结果 -->
                   <div v-if="analysisResult" class="ai-analysis">
-                    <el-divider>AI 分析报告</el-divider>
+                    <div class="analysis-header">
+                      <el-divider>AI 分析报告</el-divider>
+                      <el-button size="small" @click="downloadReport" class="download-btn">
+                        <el-icon><Download /></el-icon>
+                        下载报告
+                      </el-button>
+                    </div>
                     
                     <!-- 总分 -->
                     <div class="overall-score">
@@ -567,7 +573,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePromptStore } from '@/store/prompt'
 import { useConfigStore } from '@/store/config'
 import { runAPI, promptAPI, executionHistoryAPI, promptAnalysisAPI, PromptAnalysisResult, QuickAnalysisResult } from '@/api'
-import { MagicStick, Warning, InfoFilled, CircleCheck, CircleCheckFilled, WarningFilled, CircleCloseFilled } from '@element-plus/icons-vue'
+import { MagicStick, Warning, InfoFilled, CircleCheck, CircleCheckFilled, WarningFilled, CircleCloseFilled, Download } from '@element-plus/icons-vue'
 import { extractVariables } from '@/utils/markdown'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Header from '@/components/Layout/Header.vue'
@@ -1042,9 +1048,13 @@ async function handleQuickAnalyze() {
       content: formData.content
     }) as any
     
-    if (response.data?.success) {
+    
+    // 响应格式: { data: { success: true, analysis: {...} }, message: 'success' }
+    if (response.data?.success && response.data?.analysis) {
       quickAnalysis.value = response.data.analysis
       ElMessage.success('快速分析完成')
+    } else {
+      ElMessage.warning('分析结果为空')
     }
   } catch (error) {
     console.error('快速分析失败:', error)
@@ -1100,6 +1110,86 @@ function applyOptimizedPrompt() {
   }).catch(() => {
     // 用户取消
   })
+}
+
+// 下载分析报告
+function downloadReport() {
+  if (!analysisResult.value) return
+  
+  const report = analysisResult.value
+  const now = new Date().toLocaleString('zh-CN')
+  
+  // 构建 Markdown 格式报告
+  let content = `# Prompt 分析报告
+
+**生成时间**: ${now}
+**Prompt 标题**: ${formData.title || '未命名'}
+
+---
+
+## 总体评分: ${report.overall_score}/100
+
+### 维度评分
+
+`
+  
+  // 添加维度评分
+  if (report.dimensions) {
+    for (const [key, dim] of Object.entries(report.dimensions)) {
+      const dimInfo = dim as { score: number; comment: string }
+      content += `#### ${getDimensionName(key)}: ${dimInfo.score}/100
+${dimInfo.comment}
+
+`
+    }
+  }
+  
+  // 添加优点
+  if (report.strengths?.length) {
+    content += `### 优点
+${report.strengths.map(s => `- ${s}`).join('\n')}
+
+`
+  }
+  
+  // 添加待改进
+  if (report.weaknesses?.length) {
+    content += `### 待改进
+${report.weaknesses.map(w => `- ${w}`).join('\n')}
+
+`
+  }
+  
+  // 添加改进建议
+  if (report.suggestions?.length) {
+    content += `### 改进建议
+${report.suggestions.map((s, i) => `${i + 1}. **${s.title}** (${s.priority})
+   ${s.description}`).join('\n\n')}
+
+`
+  }
+  
+  // 添加优化后的 Prompt
+  if (report.optimized_prompt) {
+    content += `### 优化后的 Prompt
+\`\`\`
+${report.optimized_prompt}
+\`\`\`
+`
+  }
+  
+  // 下载文件
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `prompt-analysis-${formData.title || 'report'}-${new Date().toISOString().split('T')[0]}.md`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  
+  ElMessage.success('报告下载成功')
 }
 </script>
 
@@ -1677,6 +1767,17 @@ function applyOptimizedPrompt() {
 .ai-analysis {
   background: white;
   border-radius: 8px;
+}
+
+.analysis-header {
+  position: relative;
+}
+
+.analysis-header .download-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .overall-score {

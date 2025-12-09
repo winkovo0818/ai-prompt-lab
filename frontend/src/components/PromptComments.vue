@@ -189,8 +189,8 @@
             <el-button 
               v-if="comment.user_id === currentUser?.id || currentUser?.role === 'admin'" 
               text 
-              size="small" 
-              type="danger"
+              size="small"
+              class="delete-btn"
               @click="deleteComment(comment)"
             >
               <el-icon><Delete /></el-icon>
@@ -363,16 +363,14 @@ async function handleInput(value: string) {
   if (atMatch) {
     mentionStart.value = cursorPos - atMatch[1].length
     const keyword = atMatch[1]
-    if (keyword.length > 0) {
-      try {
-        const res = await commentAPI.searchUsers(keyword) as any
-        mentionUsers.value = res.data || []
-        showMentionList.value = true
-        mentionIndex.value = 0
-      } catch (e) {
-        mentionUsers.value = []
-      }
-    } else {
+    try {
+      // 传递 promptId 来搜索团队成员，空关键词也搜索
+      const res = await commentAPI.searchUsers(keyword || '', props.promptId) as any
+      mentionUsers.value = res.data || []
+      showMentionList.value = mentionUsers.value.length > 0
+      mentionIndex.value = 0
+    } catch (e) {
+      mentionUsers.value = []
       showMentionList.value = false
     }
   } else {
@@ -603,19 +601,42 @@ onMounted(() => {
 /* 新评论 */
 .new-comment {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   margin-bottom: 1.5rem;
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  border: 1px solid #e8ecf0;
+}
+
+.new-comment :deep(.el-avatar) {
+  flex-shrink: 0;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .comment-input-wrapper {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .input-area {
   position: relative;
+}
+
+.input-area :deep(.el-textarea__inner) {
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+  padding: 0.75rem;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.input-area :deep(.el-textarea__inner:focus) {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
 }
 
 .mention-dropdown {
@@ -655,8 +676,23 @@ onMounted(() => {
 .comment-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.comment-actions :deep(.el-select) {
+  width: auto !important;
+}
+
+.comment-actions :deep(.el-select .el-input__wrapper) {
+  border-radius: 6px;
+  box-shadow: none;
+  border: 1px solid #e4e7ed;
+}
+
+.comment-actions :deep(.el-button--primary) {
+  border-radius: 6px;
+  padding: 8px 20px;
 }
 
 /* 评论列表 */
@@ -721,8 +757,31 @@ onMounted(() => {
 
 .comment-footer {
   display: flex;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.comment-item:hover .comment-footer {
+  opacity: 1;
+}
+
+.comment-footer :deep(.el-button) {
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #909399;
+  border-radius: 4px;
+}
+
+.comment-footer :deep(.el-button:hover) {
+  color: #409eff;
+  background: #ecf5ff;
+}
+
+.comment-footer .delete-btn:hover {
+  color: #909399 !important;
+  background: #f5f5f5 !important;
 }
 
 /* 回复列表 */

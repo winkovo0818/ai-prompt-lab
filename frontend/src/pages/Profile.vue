@@ -6,9 +6,26 @@
       <!-- 用户头像和基本信息 -->
       <div class="profile-header">
         <div class="avatar-section">
-          <el-avatar :size="100" class="user-avatar">
-            {{ userStore.userInfo?.username?.[0]?.toUpperCase() || 'U' }}
-          </el-avatar>
+          <div class="avatar-upload">
+            <el-avatar 
+              :size="100" 
+              class="user-avatar"
+              :src="avatarUrl"
+            >
+              {{ userStore.userInfo?.username?.[0]?.toUpperCase() || 'U' }}
+            </el-avatar>
+            <div class="avatar-overlay" @click="triggerUpload">
+              <el-icon><Camera /></el-icon>
+              <span>更换头像</span>
+            </div>
+            <input 
+              ref="avatarInput"
+              type="file" 
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              style="display: none"
+              @change="handleAvatarChange"
+            />
+          </div>
           <div class="user-info">
             <h2 class="username">{{ userStore.userInfo?.username }}</h2>
             <div class="user-meta">
@@ -245,13 +262,18 @@ import { authAPI, promptAPI } from '@/api'
 import { ElMessage, FormInstance, FormRules } from 'element-plus'
 import { 
   User, Message, Lock, Star, Clock, Document, Share, InfoFilled, 
-  Calendar, Key, Phone, OfficeBuilding, Location, Link
+  Calendar, Key, Phone, OfficeBuilding, Location, Link, Camera
 } from '@element-plus/icons-vue'
 import Header from '@/components/Layout/Header.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const formRef = ref<FormInstance>()
+const avatarInput = ref<HTMLInputElement>()
+
+// 头像相关
+const avatarUrl = ref('')
+const avatarUploading = ref(false)
 
 const profileForm = ref({
   email: '',
@@ -288,17 +310,107 @@ const formRules: FormRules = {
 }
 
 onMounted(async () => {
-  if (userStore.userInfo) {
-    profileForm.value.email = userStore.userInfo.email || ''
-    profileForm.value.nickname = userStore.userInfo.nickname || ''
-    profileForm.value.phone = userStore.userInfo.phone || ''
-    profileForm.value.company = userStore.userInfo.company || ''
-    profileForm.value.location = userStore.userInfo.location || ''
-    profileForm.value.website = userStore.userInfo.website || ''
-    profileForm.value.bio = userStore.userInfo.bio || ''
-  }
+  // 先从后端获取最新的用户信息
+  await loadUserInfo()
   await loadStats()
 })
+
+// 加载用户信息
+async function loadUserInfo() {
+  try {
+    const response = await authAPI.getCurrentUser() as any
+    console.log('获取用户信息响应:', response)
+    
+    // 响应格式是 { data: {...}, message: '...' }，没有 code 字段
+    if (response.data) {
+      console.log('用户数据:', response.data)
+      // 更新 store
+      Object.assign(userStore.userInfo || {}, response.data)
+      
+      // 填充表单
+      profileForm.value.email = response.data.email || ''
+      profileForm.value.nickname = response.data.nickname || ''
+      profileForm.value.phone = response.data.phone || ''
+      profileForm.value.company = response.data.company || ''
+      profileForm.value.location = response.data.location || ''
+      profileForm.value.website = response.data.website || ''
+      profileForm.value.bio = response.data.bio || ''
+      
+      // 初始化头像 URL
+      if (response.data.avatar_url) {
+        avatarUrl.value = response.data.avatar_url
+      }
+    }
+  } catch (error) {
+    console.error('加载用户信息失败:', error)
+    // 降级使用本地数据
+    if (userStore.userInfo) {
+      profileForm.value.email = userStore.userInfo.email || ''
+      profileForm.value.nickname = (userStore.userInfo as any).nickname || ''
+      profileForm.value.phone = (userStore.userInfo as any).phone || ''
+      profileForm.value.company = (userStore.userInfo as any).company || ''
+      profileForm.value.location = (userStore.userInfo as any).location || ''
+      profileForm.value.website = (userStore.userInfo as any).website || ''
+      profileForm.value.bio = (userStore.userInfo as any).bio || ''
+      
+      if (userStore.userInfo.avatar_url) {
+        avatarUrl.value = userStore.userInfo.avatar_url
+      }
+    }
+  }
+}
+
+// 触发头像上传
+function triggerUpload() {
+  avatarInput.value?.click()
+}
+
+// 处理头像选择
+async function handleAvatarChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  // 检查文件大小 (2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 2MB')
+    return
+  }
+  
+  // 检查文件类型
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.error('仅支持 JPG、PNG、GIF、WebP 格式的图片')
+    return
+  }
+  
+  avatarUploading.value = true
+  
+  try {
+    const response = await authAPI.uploadAvatar(file) as any
+    
+    if (response.data?.avatar_url) {
+      avatarUrl.value = response.data.avatar_url
+      
+      // 更新 store 中的用户信息
+      if (userStore.userInfo) {
+        userStore.userInfo.avatar_url = response.data.avatar_url
+      }
+      
+      ElMessage.success('头像上传成功')
+    } else {
+      ElMessage.error(response.message || '头像上传失败')
+    }
+  } catch (error: any) {
+    console.error('头像上传失败:', error)
+    ElMessage.error(error.response?.data?.message || '头像上传失败')
+  } finally {
+    avatarUploading.value = false
+    // 重置 input，允许再次选择相同文件
+    target.value = ''
+  }
+}
 
 // 加载统计数据
 async function loadStats() {
@@ -363,11 +475,15 @@ async function handleSubmit() {
       const response = await authAPI.updateProfile(updateData) as any
       
       // 更新本地用户信息
-      if (response.data) {
-        userStore.userInfo = response.data
+      if (response.code === 0 && response.data) {
+        // 合并更新用户信息
+        if (userStore.userInfo) {
+          Object.assign(userStore.userInfo, response.data)
+        }
+        ElMessage.success('个人资料更新成功')
+      } else {
+        ElMessage.error(response.message || '更新失败')
       }
-
-      ElMessage.success('个人资料更新成功')
     } catch (error: any) {
       console.error('更新失败:', error)
       ElMessage.error(error.response?.data?.message || '更新失败')
@@ -430,6 +546,45 @@ async function handleSubmit() {
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid #e8edf3;
+}
+
+.avatar-upload {
+  position: relative;
+  cursor: pointer;
+}
+
+.avatar-upload .user-avatar {
+  background: #409eff;
+  font-size: 2rem;
+  font-weight: 600;
+  color: white;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  color: white;
+  font-size: 0.75rem;
+}
+
+.avatar-upload:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay .el-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .user-avatar {

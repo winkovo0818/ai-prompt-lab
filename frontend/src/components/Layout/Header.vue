@@ -174,6 +174,7 @@ const mobileMenuVisible = ref(false)
 
 onMounted(async () => {
   await loadSiteSettings()
+  await loadUserInfo()
   
   // 监听网站设置更新事件
   window.addEventListener('site-settings-updated', (event: any) => {
@@ -181,6 +182,20 @@ onMounted(async () => {
     document.title = siteName.value
   })
 })
+
+// 加载最新用户信息
+async function loadUserInfo() {
+  try {
+    const { authAPI } = await import('@/api')
+    const response = await authAPI.getCurrentUser() as any
+    if (response.data) {
+      // 更新 store 中的用户信息
+      Object.assign(userStore.userInfo || {}, response.data)
+    }
+  } catch (error) {
+    console.error('加载用户信息失败:', error)
+  }
+}
 
 async function loadSiteSettings() {
   try {

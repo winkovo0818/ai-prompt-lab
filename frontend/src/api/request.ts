@@ -33,13 +33,17 @@ request.interceptors.response.use(
     const res = response.data
 
     // 统一响应格式处理
-    if (res.code === 0) {
+    // 兼容两种格式：{ code: 0, data, message } 或 { data, message }
+    if (res.code === 0 || (res.data !== undefined && res.code === undefined)) {
       // 直接返回实际数据，而不是整个响应对象
       return { data: res.data, message: res.message }
-    } else {
-      // 业务错误
+    } else if (res.code !== undefined && res.code !== 0) {
+      // 业务错误（有 code 且不为 0）
       ElMessage.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message || '请求失败'))
+    } else {
+      // 其他情况直接返回
+      return res
     }
   },
   (error) => {

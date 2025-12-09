@@ -15,6 +15,7 @@ from ..models.comment import (
     PromptCommentUpdate, PromptCommentResponse
 )
 from ..models.prompt import Prompt
+from ..models.team import Team, TeamMember, TeamPrompt
 
 router = APIRouter(prefix="/api/prompt", tags=["Prompt评论"])
 
@@ -223,17 +224,82 @@ async def get_comment_stats(
 
 @router.get("/users/search")
 async def search_users(
-    keyword: str = Query(..., min_length=1, description="搜索关键词"),
+    keyword: str = Query(default="", description="搜索关键词，空则返回所有可提及用户"),
+    prompt_id: Optional[int] = Query(default=None, description="Prompt ID，用于搜索关联团队成员"),
     limit: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user)
 ):
-    """搜索用户（用于@提及）"""
-    statement = select(User).where(
-        User.username.contains(keyword)
-    ).limit(limit)
+    """搜索用户（用于@提及）
     
-    users = db.exec(statement).all()
+    如果提供了 prompt_id，则只搜索该 Prompt 关联的团队成员；
+    否则搜索 Prompt 作者和当前用户所在团队的成员
+    """
+    users_set = set()  # 用于去重
+    result_users = []
+    
+    def matches_keyword(username: str) -> bool:
+        """检查用户名是否匹配关键词"""
+        if not keyword:
+            return True
+        return keyword.lower() in username.lower()
+    
+    if prompt_id:
+        # 获取 Prompt 信息
+        prompt = db.get(Prompt, prompt_id)
+        if prompt:
+            # 添加 Prompt 作者
+            owner = db.get(User, prompt.user_id)
+            if owner and matches_keyword(owner.username):
+                users_set.add(owner.id)
+                result_users.append(owner)
+            
+            # 查找该 Prompt 所属的团队
+            team_prompts = db.exec(
+                select(TeamPrompt).where(TeamPrompt.prompt_id == prompt_id)
+            ).all()
+            
+            for tp in team_prompts:
+                # 获取团队成员
+                team_members = db.exec(
+                    select(TeamMember).where(TeamMember.team_id == tp.team_id)
+                ).all()
+                
+                for tm in team_members:
+                    if tm.user_id not in users_set:
+                        user = db.get(User, tm.user_id)
+                        if user and matches_keyword(user.username):
+                            users_set.add(user.id)
+                            result_users.append(user)
+    
+    # 如果没有 prompt_id 或没有找到团队成员，搜索当前用户所在的团队成员
+    if not result_users:
+        # 获取当前用户所在的所有团队
+        my_teams = db.exec(
+            select(TeamMember).where(TeamMember.user_id == current_user.id)
+        ).all()
+        
+        for my_team in my_teams:
+            team_members = db.exec(
+                select(TeamMember).where(TeamMember.team_id == my_team.team_id)
+            ).all()
+            
+            for tm in team_members:
+                if tm.user_id not in users_set:
+                    user = db.get(User, tm.user_id)
+                    if user and matches_keyword(user.username):
+                        users_set.add(user.id)
+                        result_users.append(user)
+    
+    # 如果还是没有结果，回退到搜索所有用户
+    if not result_users:
+        if keyword:
+            statement = select(User).where(
+                User.username.contains(keyword)
+            ).limit(limit)
+        else:
+            statement = select(User).limit(limit)
+        result_users = list(db.exec(statement).all())
     
     return {
         "code": 0,
@@ -243,7 +309,7 @@ async def search_users(
                 "username": u.username,
                 "avatar_url": u.avatar_url
             }
-            for u in users
+            for u in result_users[:limit]
         ]
     }
 

@@ -155,7 +155,16 @@ export const authAPI = {
   
   // 更新个人资料
   updateProfile: (data: { email?: string, password?: string }) =>
-    request.put<APIResponse<UserInfo>>('/api/auth/profile', data)
+    request.put<APIResponse<UserInfo>>('/api/auth/profile', data),
+  
+  // 上传头像
+  uploadAvatar: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return request.post<APIResponse<{ avatar_url: string }>>('/api/auth/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  }
 }
 
 // 管理员 API
@@ -766,9 +775,9 @@ export const commentAPI = {
     request.get<APIResponse<CommentStats>>(`/api/prompt/${promptId}/comments/stats`),
   
   // 搜索用户（用于@提及）
-  searchUsers: (keyword: string, limit?: number) =>
+  searchUsers: (keyword: string, promptId?: number, limit?: number) =>
     request.get<APIResponse<CommentUser[]>>('/api/prompt/users/search', { 
-      params: { keyword, limit } 
+      params: { keyword, prompt_id: promptId, limit } 
     })
 }
 

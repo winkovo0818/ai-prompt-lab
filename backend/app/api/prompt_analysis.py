@@ -53,12 +53,17 @@ async def analyze_prompt(
             detail=result.get("error", "分析失败")
         )
     
-    return result
+    return {
+        "code": 0,
+        "data": result,
+        "message": "分析成功"
+    }
 
 
 @router.post("/quick")
 async def quick_analyze(
     request: QuickAnalyzeRequest,
+    db: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -69,8 +74,17 @@ async def quick_analyze(
     if not request.content:
         raise HTTPException(status_code=400, detail="Prompt 内容不能为空")
     
+    # 重新获取用户避免会话冲突
+    user = db.get(User, current_user.id)
+    if not user:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    
     result = PromptAnalyzer.get_quick_tips(request.content)
     return {
-        "success": True,
-        "analysis": result
+        "code": 0,
+        "data": {
+            "success": True,
+            "analysis": result
+        },
+        "message": "分析成功"
     }
