@@ -46,7 +46,7 @@ async def get_usage_history(
         'requests': u.request_count,
         'tokens': u.total_tokens,
         'cost': round(u.total_cost, 4),
-        'model_usage': u.model_usage
+        'model_usage': u.model_usage_details
     } for u in usages])
 
 

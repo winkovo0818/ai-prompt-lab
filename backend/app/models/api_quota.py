@@ -73,7 +73,7 @@ class ApiUsage(SQLModel, table=True):
     total_cost: float = Field(default=0.0)  # 总费用
     
     # 详细记录
-    model_usage: Optional[str] = Field(default=None, sa_column=Column(Text))  # JSON: {model: {count, tokens, cost}}
+    model_usage_details: Optional[str] = Field(default=None, sa_column=Column(Text))  # JSON: {model: {count, tokens, cost}}
     
     # 时间
     created_at: datetime = Field(default_factory=datetime.utcnow)

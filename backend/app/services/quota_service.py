@@ -208,21 +208,21 @@ class QuotaService:
         usage.updated_at = datetime.utcnow()
         
         # 更新模型使用详情
-        model_usage = {}
-        if usage.model_usage:
+        model_usage_details = {}
+        if usage.model_usage_details:
             try:
-                model_usage = json.loads(usage.model_usage)
+                model_usage_details = json.loads(usage.model_usage_details)
             except:
                 pass
-        
-        if model not in model_usage:
-            model_usage[model] = {'count': 0, 'tokens': 0, 'cost': 0.0}
-        
-        model_usage[model]['count'] += 1
-        model_usage[model]['tokens'] += input_tokens + output_tokens
-        model_usage[model]['cost'] += cost
-        
-        usage.model_usage = json.dumps(model_usage)
+
+        if model not in model_usage_details:
+            model_usage_details[model] = {'count': 0, 'tokens': 0, 'cost': 0.0}
+
+        model_usage_details[model]['count'] += 1
+        model_usage_details[model]['tokens'] += input_tokens + output_tokens
+        model_usage_details[model]['cost'] += cost
+
+        usage.model_usage_details = json.dumps(model_usage_details)
         
         db.add(usage)
         db.commit()
