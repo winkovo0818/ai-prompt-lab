@@ -22,8 +22,8 @@ class PromptBranch(SQLModel, table=True):
     # Relationships
     prompt: "Prompt" = Relationship(back_populates="branches")
     commits: list["PromptCommit"] = Relationship(back_populates="branch")
-    source_prs: list["PromptPullRequest"] = Relationship(back_populates="source_branch")
-    target_prs: list["PromptPullRequest"] = Relationship(back_populates="target_branch")
+    # NOTE: source_prs/target_prs relationships removed due to SQLAlchemy
+    # ambiguous foreign key - use PromptPullRequest APIs for PR queries
 
 
 from app.models.prompt import Prompt

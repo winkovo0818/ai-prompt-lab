@@ -22,6 +22,5 @@ class PromptPullRequest(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships
-    source_branch: "PromptBranch" = Relationship(back_populates="source_prs")
-    target_branch: "PromptBranch" = Relationship(back_populates="target_prs")
+    # NOTE: source_branch/target_branch relationships are defined in branch.py
+    # to avoid SQLModel foreign_keys ambiguity issue
