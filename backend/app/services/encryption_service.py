@@ -10,11 +10,32 @@ from typing import Optional
 
 class EncryptionService:
     """加密服务 - 用于加密存储敏感信息如API密钥"""
-    
-    # 从环境变量或配置文件获取主密钥
-    # 注意：实际部署时应该从安全的配置管理系统获取
-    _MASTER_KEY = os.getenv('ENCRYPTION_MASTER_KEY', 'default-master-key-change-in-production')
-    _SALT = os.getenv('ENCRYPTION_SALT', 'default-salt-change-in-production').encode()
+
+    # 必须从环境变量获取主密钥，不允许使用默认值
+    _MASTER_KEY = os.getenv('ENCRYPTION_MASTER_KEY')
+    _SALT = os.getenv('ENCRYPTION_SALT')
+
+    @classmethod
+    def _validate_config(cls):
+        """验证配置是否完整"""
+        if not cls._MASTER_KEY:
+            raise ValueError(
+                "ENCRYPTION_MASTER_KEY 环境变量未设置。"
+                "请在 .env 文件中设置 ENCRYPTION_MASTER_KEY=your-secure-key"
+            )
+        if not cls._SALT:
+            raise ValueError(
+                "ENCRYPTION_SALT 环境变量未设置。"
+                "请在 .env 文件中设置 ENCRYPTION_SALT=your-secure-salt"
+            )
+
+    @classmethod
+    def _ensure_salt(cls):
+        """确保 SALT 已初始化"""
+        if cls._SALT is None:
+            raise ValueError("ENCRYPTION_SALT 未设置")
+        if isinstance(cls._SALT, str):
+            cls._SALT = cls._SALT.encode()
     
     _cipher = None
     
@@ -22,17 +43,21 @@ class EncryptionService:
     def _get_cipher(cls) -> Fernet:
         """获取或创建加密器"""
         if cls._cipher is None:
+            # 验证配置
+            cls._validate_config()
+            cls._ensure_salt()
             # 使用PBKDF2HMAC从主密钥派生加密密钥
+            salt = cls._SALT if isinstance(cls._SALT, bytes) else cls._SALT.encode()
             kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
                 length=32,
-                salt=cls._SALT,
+                salt=salt,
                 iterations=100000,
                 backend=default_backend()
             )
             key = base64.urlsafe_b64encode(kdf.derive(cls._MASTER_KEY.encode()))
             cls._cipher = Fernet(key)
-        
+
         return cls._cipher
     
     @staticmethod
@@ -53,8 +78,7 @@ class EncryptionService:
             cipher = EncryptionService._get_cipher()
             encrypted = cipher.encrypt(api_key.encode())
             return encrypted.decode()
-        except Exception as e:
-            print(f"加密失败: {str(e)}")
+        except Exception:
             raise ValueError("API密钥加密失败")
     
     @staticmethod

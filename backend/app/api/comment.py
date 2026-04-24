@@ -20,6 +20,61 @@ from ..models.team import Team, TeamMember, TeamPrompt
 router = APIRouter(prefix="/api/prompt", tags=["Prompt评论"])
 
 
+def _check_prompt_access(prompt_id: int, current_user: User, db: Session, require_edit: bool = False) -> tuple[Prompt, Optional[dict]]:
+    """
+    检查用户是否有权访问指定 Prompt
+
+    Returns:
+        (prompt, team_info) - prompt 对象和团队信息（有的话）
+    Raises:
+        HTTPException - 无权访问时抛出
+    """
+    prompt = db.get(Prompt, prompt_id)
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt 不存在")
+
+    team_permission = None
+    team_info = None
+
+    # 检查访问权限：所有者、公开、或团队共享
+    if prompt.user_id != current_user.id and not prompt.is_public:
+        user_teams = db.exec(
+            select(TeamMember).where(
+                TeamMember.user_id == current_user.id,
+                TeamMember.status == "active"
+            )
+        ).all()
+
+        team_ids = [tm.team_id for tm in user_teams]
+
+        if team_ids:
+            team_prompt = db.exec(
+                select(TeamPrompt).where(
+                    TeamPrompt.prompt_id == prompt_id,
+                    TeamPrompt.team_id.in_(team_ids)
+                )
+            ).first()
+
+            if team_prompt:
+                team_permission = team_prompt.permission
+                team = db.get(Team, team_prompt.team_id)
+                team_info = {
+                    "team_id": team_prompt.team_id,
+                    "team_name": team.name if team else None,
+                    "permission": team_prompt.permission
+                }
+
+        if not team_permission:
+            raise HTTPException(status_code=403, detail="无权访问该 Prompt")
+
+    # 如果需要编辑权限
+    if require_edit and prompt.user_id != current_user.id and team_permission != "edit":
+        if not (current_user.role == "admin"):
+            raise HTTPException(status_code=403, detail="无权编辑该 Prompt")
+
+    return prompt, team_info
+
+
 @router.get("/{prompt_id}/comments")
 async def get_comments(
     prompt_id: int,
@@ -29,11 +84,9 @@ async def get_comments(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取 Prompt 的评论列表"""
-    # 验证 Prompt 存在
-    prompt = db.get(Prompt, prompt_id)
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt 不存在")
-    
+    # 检查访问权限
+    prompt, _ = _check_prompt_access(prompt_id, current_user, db)
+
     # 构建查询
     statement = select(PromptComment).where(
         PromptComment.prompt_id == prompt_id,
@@ -70,11 +123,9 @@ async def create_comment(
     current_user: User = Depends(get_current_active_user)
 ):
     """创建评论"""
-    # 验证 Prompt 存在
-    prompt = db.get(Prompt, prompt_id)
-    if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt 不存在")
-    
+    # 检查访问权限
+    prompt, _ = _check_prompt_access(prompt_id, current_user, db)
+
     # 如果是回复，验证父评论存在
     if data.parent_id:
         parent = db.get(PromptComment, data.parent_id)
@@ -193,6 +244,9 @@ async def get_comment_stats(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取评论统计"""
+    # 检查访问权限
+    prompt, _ = _check_prompt_access(prompt_id, current_user, db)
+
     # 总评论数
     total = db.exec(
         select(PromptComment).where(PromptComment.prompt_id == prompt_id)

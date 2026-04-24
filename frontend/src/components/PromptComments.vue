@@ -521,18 +521,39 @@ async function updateReviewStatus(comment: PromptComment, status: 'approved' | '
   }
 }
 
-// 渲染内容（高亮@提及）
+// 渲染内容（高亮@提及，HTML转义防XSS）
 function renderContent(content: string, mentionedUsers?: CommentUser[]) {
-  if (!mentionedUsers || mentionedUsers.length === 0) {
-    return content
+  if (!content) return ''
+
+  // HTML 转义（防止 XSS）
+  let result = escapeHtml(content)
+
+  // 高亮@提及
+  if (mentionedUsers && mentionedUsers.length > 0) {
+    for (const user of mentionedUsers) {
+      const regex = new RegExp(`@${escapeRegex(user.username)}\\b`, 'g')
+      result = result.replace(regex, `<span class="mention">@${escapeHtml(user.username)}</span>`)
+    }
   }
-  
-  let result = content
-  for (const user of mentionedUsers) {
-    const regex = new RegExp(`@${user.username}\\b`, 'g')
-    result = result.replace(regex, `<span class="mention">@${user.username}</span>`)
-  }
+
   return result
+}
+
+// HTML 转义
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }
+  return text.replace(/[&<>"']/g, m => map[m])
+}
+
+// 转义正则特殊字符
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 // 格式化时间

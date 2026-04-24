@@ -1,7 +1,42 @@
 import { marked } from 'marked'
 import hljs from 'highlight.js'
+import xss from 'xss'
 import 'highlight.js/styles/atom-one-dark.css'
 import 'github-markdown-css/github-markdown-light.css'
+
+// 配置 xss 过滤器
+const xssOptions: xss.IOptions = {
+  whiteList: {
+    // 允许的标签
+    a: ['href', 'title', 'target', 'rel'],
+    img: ['src', 'alt', 'title'],
+    h1: [], h2: [], h3: [], h4: [], h5: [], h6: [],
+    p: [],
+    ul: [], ol: [], li: [],
+    blockquote: [],
+    code: ['class'],
+    pre: ['class'],
+    span: ['class'],
+    div: ['class'],
+    table: [], thead: [], tbody: [], tr: [], th: [], td: [],
+    br: [],
+    hr: [],
+    strong: [],
+    em: [],
+    del: [],
+    u: [],
+    // 允许的代码高亮类
+  },
+  stripIgnoreTag: true,
+  stripIgnoreTagBody: ['script', 'style', 'iframe', 'object', 'embed'],
+  onTag: function(tag: string, html: string, options: any): string {
+    // 禁止 javascript: 协议
+    if (tag === 'a' && html.includes('javascript:')) {
+      return ''
+    }
+    return html
+  }
+}
 
 // 配置 marked 的渲染器
 const renderer = new marked.Renderer()
@@ -22,7 +57,7 @@ marked.use({
           const highlighted = hljs.highlight(code, { language }).value
           return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`
         } catch (err) {
-          console.error('highlight error:', err)
+          // 静默处理高亮错误
         }
       }
       const highlighted = hljs.highlightAuto(code).value
@@ -32,17 +67,33 @@ marked.use({
 })
 
 /**
- * 渲染 Markdown
+ * 渲染 Markdown（带 XSS 防护）
  */
 export function renderMarkdown(content: string): string {
   if (!content) return ''
-  
+
   try {
-    return marked(content) as string
+    const html = marked(content) as string
+    // 使用 xss 过滤 HTML，防止 XSS 攻击
+    return xss(html, xssOptions)
   } catch (error) {
-    console.error('Markdown render error:', error)
-    return content
+    // 渲染失败时返回转义后的纯文本
+    return escapeHtml(content)
   }
+}
+
+/**
+ * HTML 转义（用于纯文本显示）
+ */
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }
+  return text.replace(/[&<>"']/g, m => map[m])
 }
 
 /**

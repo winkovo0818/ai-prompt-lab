@@ -47,7 +47,8 @@ class AIConfigResponse(SQLModel):
     user_id: int
     name: str
     base_url: str
-    api_key: str  # 前端显示时需要部分隐藏
+    api_key: str = ""  # 已废弃，始终返回空字符串
+    masked_api_key: str = ""  # 脱敏后的 API Key
     model: str
     description: Optional[str] = None
     is_default: bool = False

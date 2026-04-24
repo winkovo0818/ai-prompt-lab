@@ -12,6 +12,11 @@ DATABASE_URL=mysql+pymysql://root:your_password@localhost:3306/ai_prompt_lab?cha
 # 生成命令: python -c "import secrets; print(secrets.token_urlsafe(32))"
 SECRET_KEY=your-secret-key-min-32-chars-here
 
+# API 密钥加密配置（必须设置）
+# 生成命令: python -c "import secrets; print(secrets.token_urlsafe(32))"
+ENCRYPTION_MASTER_KEY=your-encryption-master-key-here
+ENCRYPTION_SALT=your-encryption-salt-here
+
 # CORS 配置（允许的前端域名，逗号分隔）
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 

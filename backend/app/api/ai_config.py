@@ -33,14 +33,17 @@ async def get_ai_configs(
     
     # 合并配置列表：全局配置放在前面
     all_configs = list(global_configs) + list(user_configs)
-    
+
     return success_response(data=[
         AIConfigResponse(
             id=config.id,
             user_id=config.user_id,
             name=config.name,
             base_url=config.base_url,
-            api_key=config.api_key,
+            api_key="",  # 不返回真实 API Key
+            masked_api_key=EncryptionService.mask_api_key(
+                EncryptionService.decrypt_api_key(config.api_key)
+            ) if config.api_key else "",
             model=config.model,
             description=config.description,
             is_default=config.is_default,
@@ -92,7 +95,8 @@ async def create_ai_config(
             user_id=config.user_id,
             name=config.name,
             base_url=config.base_url,
-            api_key=config.api_key,
+            api_key="",
+            masked_api_key=EncryptionService.mask_api_key(data.api_key),
             model=config.model,
             description=config.description,
             created_at=config.created_at,
@@ -151,7 +155,10 @@ async def update_ai_config(
             user_id=config.user_id,
             name=config.name,
             base_url=config.base_url,
-            api_key=config.api_key,
+            api_key="",
+            masked_api_key=EncryptionService.mask_api_key(
+                EncryptionService.decrypt_api_key(config.api_key)
+            ) if config.api_key else "",
             model=config.model,
             description=config.description,
             created_at=config.created_at,
@@ -216,7 +223,10 @@ async def get_ai_config(
             user_id=config.user_id,
             name=config.name,
             base_url=config.base_url,
-            api_key=config.api_key,
+            api_key="",
+            masked_api_key=EncryptionService.mask_api_key(
+                EncryptionService.decrypt_api_key(config.api_key)
+            ) if config.api_key else "",
             model=config.model,
             description=config.description,
             created_at=config.created_at,

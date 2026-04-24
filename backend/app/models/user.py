@@ -53,7 +53,7 @@ class UserResponse(SQLModel):
     id: int
     username: str
     email: str
-    api_key: Optional[str] = None
+    # api_key 已移除 - 不再暴露用户 API Key
     role: str = "user"
     nickname: Optional[str] = None
     phone: Optional[str] = None
