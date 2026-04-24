@@ -165,8 +165,14 @@ AI Prompt Lab 专为**企业团队**设计，帮助开发者和 AI 工程师：
 ### 📦 环境要求
 
 - **Node.js** >= 16
-- **Python** >= 3.8
+- **Python** >= 3.8, **推荐 3.11 或 3.12**（避免 3.13 导致的编译问题）
 - **MySQL** >= 5.7
+
+### ⚠️ 注意事项
+
+- **不要使用 Python 3.13**，该版本过新，部分依赖（如 pydantic-core）缺少预编译包
+- 如果遇到 `link.exe not found` 错误，需要安装 Visual Studio Build Tools 或使用 Python 3.12
+- 推荐使用 conda 创建环境：`conda create -n ai-prompt-lab python=3.12`
 
 ### ⚡ 一键部署
 
