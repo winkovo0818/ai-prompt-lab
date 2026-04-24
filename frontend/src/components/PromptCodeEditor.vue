@@ -1,35 +1,57 @@
 <template>
-  <div class="prompt-code-editor" :class="{ disabled, focused }">
-    <div class="editor-wrapper">
-      <!-- 背景高亮层 -->
-      <div ref="highlightRef" class="highlight-backdrop" v-html="highlightedContent"></div>
-      <!-- 实际输入框 -->
-      <textarea
-        ref="textareaRef"
-        class="editor-textarea"
-        :value="modelValue"
-        :placeholder="placeholder"
-        :disabled="disabled"
-        @input="handleInput"
-        @focus="focused = true"
-        @blur="focused = false"
-        @scroll="syncScroll"
-        @keydown="handleKeyDown"
-      ></textarea>
+  <div class="prompt-code-editor-container" :class="{ disabled, focused }">
+    <div class="editor-inner relative min-h-[400px] flex flex-col">
+      <!-- Line Numbers (Visual only) -->
+      <div class="absolute left-0 top-0 bottom-0 w-10 bg-zinc-50 dark:bg-zinc-950/50 border-r border-zinc-100 dark:border-zinc-800/50 flex flex-col items-center py-4 text-[10px] font-mono text-zinc-300 dark:text-zinc-600 select-none">
+        <div v-for="i in lineCount" :key="i" class="leading-relaxed h-[1.8em]">{{ i }}</div>
+      </div>
+
+      <div class="flex-1 relative ml-10">
+        <!-- Background Highlight Layer -->
+        <div 
+          ref="highlightRef" 
+          class="highlight-layer absolute inset-0 p-4 font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-words pointer-events-none overflow-hidden text-transparent"
+          v-html="highlightedContent"
+        ></div>
+        
+        <!-- Interactive Textarea -->
+        <textarea
+          ref="textareaRef"
+          class="editor-textarea absolute inset-0 w-full h-full p-4 font-mono text-[13px] leading-relaxed bg-transparent text-zinc-800 dark:text-zinc-200 border-none outline-none resize-none caret-brand-accent"
+          :value="modelValue"
+          :placeholder="placeholder"
+          :disabled="disabled"
+          @input="handleInput"
+          @focus="focused = true"
+          @blur="focused = false"
+          @scroll="syncScroll"
+          @keydown="handleKeyDown"
+        ></textarea>
+      </div>
     </div>
-    <div class="editor-status">
-      <span class="status-hint">
-        <span class="var-example" v-text="varSyntax"></span> 语法添加变量
-      </span>
-      <span class="status-info">
-        {{ charCount }} 字符 · {{ variableCount }} 变量
-      </span>
+    
+    <!-- Footer Status -->
+    <div class="editor-footer flex items-center justify-between px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-800/50">
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-1.5">
+          <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+          <span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">UTF-8</span>
+        </div>
+        <div class="flex items-center space-x-1.5">
+          <el-icon :size="10" class="text-zinc-400"><Tickets /></el-icon>
+          <span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{{ variableCount }} 动态项</span>
+        </div>
+      </div>
+      <div class="text-[9px] font-mono text-zinc-400 uppercase tracking-tighter">
+        Ln {{ cursorLine }}, Col {{ cursorCol }}
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
+import { Tickets } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   modelValue: string
@@ -45,36 +67,34 @@ const emit = defineEmits<{
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const highlightRef = ref<HTMLDivElement | null>(null)
 const focused = ref(false)
-const varSyntax = '{{变量}}'
+const cursorLine = ref(1)
+const cursorCol = ref(1)
 
-const charCount = computed(() => props.modelValue?.length || 0)
+const lineCount = computed(() => {
+  const lines = (props.modelValue || '').split('\n').length
+  return Math.max(lines, 15)
+})
+
 const variableCount = computed(() => {
   const matches = props.modelValue?.match(/\{\{[^}]+\}\}/g)
   return matches ? matches.length : 0
 })
 
 const highlightedContent = computed(() => {
-  if (!props.modelValue) return '<span class="placeholder-text">输入 Prompt 内容...</span>'
-  
-  let content = props.modelValue
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  
-  // 高亮 {{变量}}
+  let content = props.modelValue || ''
+  content = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   content = content.replace(
     /(\{\{)([^}]+)(\}\})/g,
-    '<span class="hl-var"><span class="hl-bracket">$1</span><span class="hl-name">$2</span><span class="hl-bracket">$3</span></span>'
+    '<span class="hl-var-bracket">$1</span><span class="hl-var-name">$2</span><span class="hl-var-bracket">$3</span>'
   )
-  
-  content = content.replace(/\n/g, '<br>')
-  return content
+  return content + '\n'
 })
 
 function handleInput(e: Event) {
   const target = e.target as HTMLTextAreaElement
   emit('update:modelValue', target.value)
   emit('input', target.value)
+  updateCursorPos()
 }
 
 function syncScroll() {
@@ -83,138 +103,64 @@ function syncScroll() {
   }
 }
 
+function updateCursorPos() {
+  const textarea = textareaRef.value
+  if (!textarea) return
+  const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart)
+  const lines = textBeforeCursor.split('\n')
+  cursorLine.value = lines.length
+  cursorCol.value = lines[lines.length - 1].length + 1
+}
+
 function handleKeyDown(e: KeyboardEvent) {
   if (e.key === 'Tab') {
     e.preventDefault()
     const textarea = textareaRef.value
     if (!textarea) return
-    
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
     const value = props.modelValue || ''
-    
     const newValue = value.substring(0, start) + '  ' + value.substring(end)
     emit('update:modelValue', newValue)
-    
     nextTick(() => {
       textarea.selectionStart = textarea.selectionEnd = start + 2
+      updateCursorPos()
     })
+  } else {
+    setTimeout(updateCursorPos, 0)
   }
 }
+
+onMounted(() => {
+  if (textareaRef.value) {
+    textareaRef.value.addEventListener('click', updateCursorPos)
+    textareaRef.value.addEventListener('keyup', updateCursorPos)
+  }
+})
 </script>
 
 <style scoped>
-.prompt-code-editor {
-  width: 100%;
-  border: 1px solid #dcdfe6;
-  border-radius: 8px;
-  background: #fff;
-  overflow: hidden;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-}
-
-.prompt-code-editor.focused {
-  border-color: #409eff;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.15);
-}
-
-.prompt-code-editor.disabled {
-  background: #f5f7fa;
-}
-
-.editor-wrapper {
-  position: relative;
-  min-height: 280px;
-}
-
-.highlight-backdrop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 14px 16px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
-  line-height: 1.8;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  color: #303133;
-  pointer-events: none;
-  overflow-y: auto;
-  overflow-x: hidden;
+.prompt-code-editor-container {
+  @apply rounded-xl border border-transparent bg-white dark:bg-zinc-950 overflow-hidden transition-all duration-200;
 }
 
 .editor-textarea {
-  position: relative;
-  width: 100%;
-  min-height: 280px;
-  padding: 14px 16px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
   line-height: 1.8;
-  color: transparent;
-  caret-color: #303133;
-  background: transparent;
-  border: none;
-  outline: none;
-  resize: vertical;
 }
 
-.editor-textarea::placeholder {
-  color: #c0c4cc;
+.highlight-layer {
+  line-height: 1.8;
 }
 
-/* 高亮样式 */
-.highlight-backdrop :deep(.placeholder-text) {
-  color: #c0c4cc;
+:deep(.hl-var-bracket) {
+  @apply text-brand-accent font-bold opacity-40;
 }
 
-.highlight-backdrop :deep(.hl-var) {
-  display: inline;
-  background: linear-gradient(135deg, #ecf5ff 0%, #e6f1fc 100%);
-  padding: 2px 0;
-  border-radius: 4px;
+:deep(.hl-var-name) {
+  @apply text-brand-accent font-bold underline decoration-brand-accent/30 underline-offset-4 opacity-100;
 }
 
-.highlight-backdrop :deep(.hl-bracket) {
-  color: #e6a23c;
-  font-weight: 600;
-}
-
-.highlight-backdrop :deep(.hl-name) {
-  color: #409eff;
-  font-weight: 600;
-  padding: 0 2px;
-}
-
-/* 底部状态栏 */
-.editor-status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 16px;
-  background: #fafafa;
-  border-top: 1px solid #ebeef5;
-  font-size: 12px;
-}
-
-.status-hint {
-  color: #909399;
-}
-
-.var-example {
-  display: inline-block;
-  background: #ecf5ff;
-  color: #409eff;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-weight: 500;
-}
-
-.status-info {
-  color: #c0c4cc;
+.disabled .editor-textarea {
+  @apply opacity-70 cursor-not-allowed;
 }
 </style>

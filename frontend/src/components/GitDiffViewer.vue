@@ -1,44 +1,81 @@
 <template>
-  <el-dialog v-model="visible" title="版本对比" width="800px">
-    <!-- Diff 头部信息 -->
-    <div class="diff-header">
-      <div class="diff-from">
-        <el-tag type="info">From</el-tag>
-        <span class="version-title">{{ fromCommit?.title }}</span>
+  <el-dialog 
+    v-model="visible" 
+    title="版本变更差异对比" 
+    width="900px" 
+    class="carbon-dialog"
+    destroy-on-close
+  >
+    <template #header>
+      <div class="flex items-center space-x-2">
+        <el-icon class="text-brand-500"><Discount /></el-icon>
+        <span class="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">版本变更差异对比</span>
       </div>
-      <div class="diff-arrow">→</div>
-      <div class="diff-to">
-        <el-tag type="success">To</el-tag>
-        <span class="version-title">{{ toCommit?.title }}</span>
+    </template>
+
+    <div class="diff-header-info grid grid-cols-[1fr,auto,1fr] items-center gap-4 mb-6">
+      <div class="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 rounded-xl flex flex-col min-w-0">
+        <span class="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">源版本 (FROM)</span>
+        <span class="text-sm font-bold text-zinc-700 dark:text-zinc-300 truncate">{{ fromCommit?.title || 'Loading...' }}</span>
+      </div>
+      <div class="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+        <el-icon><ArrowRight /></el-icon>
+      </div>
+      <div class="p-3 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-xl flex flex-col min-w-0">
+        <span class="text-[10px] font-black text-emerald-400 dark:text-emerald-500 uppercase tracking-widest mb-1">目标版本 (TO)</span>
+        <span class="text-sm font-bold text-zinc-700 dark:text-zinc-200 truncate">{{ toCommit?.title || 'Loading...' }}</span>
       </div>
     </div>
 
-    <!-- 统计 -->
-    <div class="diff-stats">
-      <span class="additions">+{{ diffResult?.additions || 0 }} 行</span>
-      <span class="deletions">-{{ diffResult?.deletions || 0 }} 行</span>
+    <!-- Statistics -->
+    <div class="flex items-center space-x-4 mb-4 ml-1">
+      <div class="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">
+        <el-icon><Plus /></el-icon>
+        <span>{{ diffResult?.additions || 0 }} 新增</span>
+      </div>
+      <div class="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-rose-50 dark:bg-rose-900/20 text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-tight">
+        <el-icon><Minus /></el-icon>
+        <span>{{ diffResult?.deletions || 0 }} 移除</span>
+      </div>
     </div>
 
-    <!-- Diff 内容 -->
-    <div class="diff-content" v-loading="loading">
-      <div
-        v-for="(segment, idx) in diffResult?.segments"
-        :key="idx"
-        :class="['diff-segment', segment.type]"
-      >
+    <!-- Diff Content Container -->
+    <div class="diff-container bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-xl" v-loading="loading">
+      <div class="diff-code-area max-h-[500px] overflow-y-auto font-mono text-sm leading-relaxed p-4 scrollbar-hide">
+        <div v-if="!loading && (!diffResult?.segments || diffResult.segments.length === 0)" class="py-20 text-center opacity-30 text-white">
+          <p>未发现内容变更</p>
+        </div>
+
         <div
-          v-for="(line, lineIdx) in segment.lines"
-          :key="lineIdx"
-          class="diff-line"
+          v-for="(segment, idx) in diffResult?.segments"
+          :key="idx"
+          :class="['diff-segment', segment.type]"
         >
-          <span class="line-prefix">{{ getLinePrefix(segment.type) }}</span>
-          <span class="line-content">{{ line }}</span>
+          <div
+            v-for="(line, lineIdx) in segment.lines"
+            :key="lineIdx"
+            class="diff-line group flex hover:bg-zinc-800 transition-colors"
+            :class="{ 
+              'bg-emerald-500/10 text-emerald-300': segment.type === 'added',
+              'bg-rose-500/10 text-rose-300': segment.type === 'deleted',
+              'text-zinc-400': segment.type === 'unchanged'
+            }"
+          >
+            <div class="line-prefix w-8 shrink-0 flex items-center justify-center border-r border-white/5 opacity-50 select-none">
+              {{ getLinePrefix(segment.type) }}
+            </div>
+            <div class="line-content px-4 py-0.5 whitespace-pre-wrap break-all flex-1 min-w-0 font-mono">
+              {{ line }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <template #footer>
-      <el-button @click="visible = false">关闭</el-button>
+      <div class="flex justify-end p-2">
+        <el-button @click="visible = false" class="rounded-xl px-8 h-10 border-zinc-200 font-bold">关闭差异对比</el-button>
+      </div>
     </template>
   </el-dialog>
 </template>
@@ -46,6 +83,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { getDiff } from '@/api/git'
+import { Discount, ArrowRight, Plus, Minus } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -66,14 +104,10 @@ const diffResult = ref<any>(null)
 
 watch(() => props.modelValue, (val) => {
   visible.value = val
-  if (val && props.fromCommitId && props.toCommitId) {
-    loadDiff()
-  }
+  if (val && props.fromCommitId && props.toCommitId) loadDiff()
 })
 
-watch(visible, (val) => {
-  emit('update:modelValue', val)
-})
+watch(visible, (val) => emit('update:modelValue', val))
 
 const loadDiff = async () => {
   loading.value = true
@@ -82,98 +116,31 @@ const loadDiff = async () => {
     fromCommit.value = res.data?.from
     toCommit.value = res.data?.to
     diffResult.value = res.data?.diff
-  } catch (err) {
-    console.error('加载差异失败', err)
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 const getLinePrefix = (type: string) => {
-  switch (type) {
-    case 'added': return '+'
-    case 'deleted': return '-'
-    default: return ' '
-  }
+  if (type === 'added') return '+'
+  if (type === 'deleted') return '-'
+  return ' '
 }
 </script>
 
 <style scoped>
-.diff-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  margin-bottom: 16px;
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+:deep(.carbon-dialog) {
+  @apply rounded-3xl overflow-hidden !important;
 }
-.diff-from, .diff-to {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+:deep(.carbon-dialog .el-dialog__header) {
+  @apply border-b border-zinc-100 dark:border-zinc-800 m-0 py-4 px-6;
 }
-.version-title {
-  font-weight: 500;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+:deep(.carbon-dialog .el-dialog__body) {
+  @apply p-6;
 }
-.diff-arrow {
-  color: #409eff;
-  font-size: 18px;
+:deep(.carbon-dialog .el-dialog__footer) {
+  @apply border-t border-zinc-100 dark:border-zinc-800 p-4;
 }
-.diff-stats {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-.additions {
-  color: #22863a;
-  font-weight: 500;
-}
-.deletions {
-  color: #cb2431;
-  font-weight: 500;
-}
-.diff-content {
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  max-height: 400px;
-  overflow: auto;
-  font-family: 'Consolas', monospace;
-  font-size: 13px;
-}
-.diff-segment.unchanged {
-  color: #666;
-  background: #fff;
-}
-.diff-segment.added {
-  background: #e6ffec;
-}
-.diff-segment.deleted {
-  background: #ffeef0;
-}
-.diff-line {
-  display: flex;
-  padding: 2px 8px;
-  line-height: 1.5;
-}
-.line-prefix {
-  width: 20px;
-  flex-shrink: 0;
-  color: #999;
-}
-.diff-segment.added .line-prefix {
-  color: #22863a;
-}
-.diff-segment.deleted .line-prefix {
-  color: #cb2431;
-}
-.line-content {
-  white-space: pre-wrap;
-  word-break: break-all;
-}
+
+.diff-segment.added { @apply bg-emerald-500/5; }
+.diff-segment.deleted { @apply bg-rose-500/5; }
 </style>

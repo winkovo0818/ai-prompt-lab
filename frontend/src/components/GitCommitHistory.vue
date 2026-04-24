@@ -1,39 +1,58 @@
 <template>
-  <div class="commit-history">
-    <div class="history-header">
-      <h4>版本历史</h4>
-      <el-button size="small" @click="loadCommits" :loading="loading">
-        <el-icon><refresh /></el-icon>
-      </el-button>
+  <div class="commit-history-container bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+    <div class="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-800/30">
+      <div class="flex items-center space-x-2">
+        <el-icon class="text-brand-500"><Clock /></el-icon>
+        <span class="text-xs font-bold uppercase tracking-widest text-zinc-500">版本提交记录</span>
+      </div>
+      <button @click="loadCommits" :class="{ 'animate-spin': loading }" class="p-1 text-zinc-400 hover:text-brand-500 transition-colors">
+        <el-icon :size="16"><Refresh /></el-icon>
+      </button>
     </div>
 
-    <div class="timeline" v-loading="loading">
-      <div v-if="commits.length === 0" class="empty-state">
-        暂无提交记录
+    <div class="timeline-wrapper p-4 max-h-[500px] overflow-y-auto scrollbar-hide" v-loading="loading">
+      <div v-if="commits.length === 0" class="py-12 text-center opacity-30">
+        <el-icon :size="32"><Memo /></el-icon>
+        <p class="mt-2 text-xs font-bold uppercase tracking-widest">暂无提交记录</p>
       </div>
 
-      <div
-        v-for="(commit, index) in commits"
-        :key="commit.id"
-        class="timeline-item"
-        :class="{ active: selectedCommit?.id === commit.id }"
-        @click="handleSelectCommit(commit)"
-      >
-        <div class="timeline-marker">
-          <div class="dot"></div>
-          <div class="line" v-if="index < commits.length - 1"></div>
-        </div>
-        <div class="timeline-content">
-          <div class="commit-title">{{ commit.title }}</div>
-          <div class="commit-meta">
-            <span class="commit-time">{{ formatTime(commit.created_at) }}</span>
+      <div class="relative space-y-1">
+        <div
+          v-for="(commit, index) in commits"
+          :key="commit.id"
+          class="commit-item group flex items-start space-x-4 p-3 rounded-xl transition-all cursor-pointer border border-transparent"
+          :class="selectedCommit?.id === commit.id ? 'bg-brand-50/50 dark:bg-brand-900/10 border-brand-200/50 dark:border-brand-800/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'"
+          @click="handleSelectCommit(commit)"
+        >
+          <!-- Custom Dot & Line -->
+          <div class="flex flex-col items-center pt-1.5 shrink-0">
+            <div 
+              class="w-2.5 h-2.5 rounded-full border-2 transition-colors shrink-0"
+              :class="selectedCommit?.id === commit.id ? 'bg-brand-500 border-brand-200 dark:border-brand-800' : 'bg-zinc-200 dark:bg-zinc-700 border-white dark:border-zinc-900'"
+            ></div>
+            <div v-if="index < commits.length - 1" class="w-px flex-1 bg-zinc-100 dark:bg-zinc-800 my-1 min-h-[20px]"></div>
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <div class="flex justify-between items-start mb-0.5">
+              <span class="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate group-hover:text-brand-600 transition-colors">
+                {{ commit.title }}
+              </span>
+              <span class="text-[10px] font-mono text-zinc-400 shrink-0 ml-4">{{ formatTime(commit.created_at) }}</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                {{ commit.id.toString().substring(0, 7) }}
+              </span>
+              <span v-if="index === 0" class="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Latest</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 分页 -->
-    <div class="pagination" v-if="total > pageSize">
+    <!-- Simple Pagination -->
+    <div class="px-4 py-3 bg-zinc-50/30 dark:bg-zinc-800/20 border-t border-zinc-100 dark:border-zinc-800 flex justify-center" v-if="total > pageSize">
       <el-pagination
         small
         layout="prev, pager, next"
@@ -48,7 +67,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, Clock, Memo } from '@element-plus/icons-vue'
 import { getCommits } from '@/api/git'
 
 const props = defineProps<{
@@ -74,112 +93,26 @@ const loadCommits = async () => {
     const res = await getCommits(props.promptId, props.branchId, currentPage.value, pageSize)
     commits.value = res.data?.items || []
     total.value = res.data?.total || 0
-  } catch (err) {
-    console.error('加载提交历史失败', err)
-  } finally {
-    loading.value = false
-  }
+    if (commits.value.length > 0 && !selectedCommit.value) {
+       // auto-select first one? maybe not.
+    }
+  } finally { loading.value = false }
 }
 
-const handleSelectCommit = (commit: any) => {
-  selectedCommit.value = commit
-  emit('select', commit)
-}
-
-const handlePageChange = (page: number) => {
-  currentPage.value = page
-  loadCommits()
-}
-
+const handleSelectCommit = (commit: any) => { selectedCommit.value = commit; emit('select', commit) }
+const handlePageChange = (page: number) => { currentPage.value = page; loadCommits() }
 const formatTime = (time: string) => {
-  const date = new Date(time)
-  return date.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const d = new Date(time)
+  return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-watch(() => props.branchId, () => {
-  currentPage.value = 1
-  loadCommits()
-})
-
-onMounted(() => {
-  loadCommits()
-})
+watch(() => props.branchId, () => { currentPage.value = 1; loadCommits() })
+onMounted(loadCommits)
 </script>
 
 <style scoped>
-.commit-history {
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-}
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.history-header h4 {
-  margin: 0;
-  font-size: 14px;
-  color: #333;
-}
-.timeline {
-  max-height: 400px;
-  overflow-y: auto;
-}
-.timeline-item {
-  display: flex;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-}
-.timeline-item:hover {
-  background: #f5f7fa;
-}
-.timeline-item.active {
-  background: #ecf5ff;
-}
-.timeline-marker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 16px;
-}
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #409eff;
-  flex-shrink: 0;
-}
-.line {
-  width: 2px;
-  flex: 1;
-  background: #e4e7ed;
-  min-height: 20px;
-}
-.timeline-content {
-  margin-left: 12px;
-  flex: 1;
-}
-.commit-title {
-  font-size: 13px;
-  color: #333;
-  line-height: 1.4;
-}
-.commit-meta {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-.empty-state {
-  text-align: center;
-  color: #999;
-  padding: 40px 0;
-}
-.pagination {
-  margin-top: 12px;
-  display: flex;
-  justify-content: center;
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+:deep(.el-pagination) {
+  --el-pagination-button-bg-color: transparent;
 }
 </style>

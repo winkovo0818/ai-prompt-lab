@@ -1,170 +1,152 @@
 <template>
-  <div class="header bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 h-14 md:h-16">
-    <!-- 移动端汉堡菜单 -->
-    <el-button class="mobile-menu-btn mobile-only" text @click="mobileMenuVisible = true">
-      <el-icon :size="24"><Menu /></el-icon>
-    </el-button>
-    
-    <div class="flex items-center space-x-4">
-      <router-link to="/prompts" class="logo-link">
-        <img src="/logo-horizontal.svg" alt="AI Prompt Lab" class="logo" />
+  <header class="header-container glass-effect sticky top-0 z-[100] h-14 md:h-16 flex items-center justify-between px-4 md:px-8 border-b border-zinc-200 dark:border-zinc-800">
+    <!-- Left Section: Logo & Nav -->
+    <div class="flex items-center space-x-10">
+      <router-link to="/prompts" class="logo-link flex items-center space-x-2.5 group">
+        <div class="logo-icon-bg w-8 h-8 rounded-lg bg-zinc-900 dark:bg-white flex items-center justify-center transition-all group-hover:scale-105 group-hover:rotate-1 shadow-sm">
+          <img src="/favicon.svg" alt="APL" class="w-5 h-5 invert dark:invert-0" />
+        </div>
+        <div class="flex flex-col">
+          <span class="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 hidden md:block leading-none uppercase">
+            Prompt Lab
+          </span>
+          <span class="text-[9px] font-medium text-zinc-400 tracking-wider hidden md:block mt-0.5 uppercase">Professional Studio</span>
+        </div>
       </router-link>
-      <nav class="nav-desktop desktop-only flex space-x-1">
+
+      <!-- Desktop Navigation -->
+      <nav class="hidden lg:flex items-center space-x-1">
         <router-link
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
-          class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
-          :class="isActive(item.path) 
-            ? 'bg-blue-50 text-blue-600' 
-            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+          class="nav-link px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
+          :class="isActive(item.path) ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800/50' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/30'"
         >
-          <el-icon class="mr-1"><component :is="item.icon" /></el-icon>
-          {{ item.name }}
+          <div class="flex items-center space-x-2">
+            <el-icon :size="14"><component :is="item.icon" /></el-icon>
+            <span>{{ item.name }}</span>
+          </div>
         </router-link>
-        
-        <!-- 网站管理下拉菜单（仅管理员可见） -->
-        <el-dropdown v-if="userStore.userInfo?.role === 'admin'" trigger="hover" class="admin-dropdown">
+
+        <!-- Admin Dropdown -->
+        <el-dropdown v-if="userStore.userInfo?.role === 'admin'" trigger="hover" class="ml-1">
           <div 
-            class="px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            :class="isAdminActive() 
-              ? 'bg-blue-50 text-blue-600' 
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+            class="nav-link px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider cursor-pointer transition-all duration-200"
+            :class="isAdminActive() ? 'text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800/50' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/30'"
           >
-            <el-icon class="mr-1"><Tools /></el-icon>
-            网站管理
-            <el-icon class="ml-1"><ArrowDown /></el-icon>
+            <div class="flex items-center space-x-1">
+              <el-icon :size="14"><Tools /></el-icon>
+              <span>管理</span>
+              <el-icon :size="10" class="ml-0.5 opacity-50"><ArrowDown /></el-icon>
+            </div>
           </div>
           <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="router.push('/admin/users')">
-                <el-icon><UserFilled /></el-icon>
-                用户管理
+            <el-dropdown-menu class="admin-menu">
+              <el-dropdown-item v-for="adminItem in adminItems" :key="adminItem.path" @click="router.push(adminItem.path)">
+                <el-icon :size="14"><component :is="adminItem.icon" /></el-icon>
+                <span class="text-xs font-medium">{{ adminItem.name }}</span>
               </el-dropdown-item>
-              <el-dropdown-item @click="router.push('/admin/prompts')">
-                <el-icon><DocumentCopy /></el-icon>
-                Prompt管理
-              </el-dropdown-item>
-              <el-dropdown-item @click="router.push('/admin/templates')">
-                <el-icon><Collection /></el-icon>
-                模板库管理
-              </el-dropdown-item>
-              <el-dropdown-item @click="router.push('/admin/teams')">
-                <el-icon><UserFilled /></el-icon>
-                团队管理
-              </el-dropdown-item>
-              <el-dropdown-item @click="router.push('/admin/quota')">
-                <el-icon><Histogram /></el-icon>
-                配额管理
-              </el-dropdown-item>
-          <el-dropdown-item divided @click="router.push('/admin/security-config')">
-            <el-icon><Lock /></el-icon>
-            安全管理
-          </el-dropdown-item>
-          <el-dropdown-item @click="router.push('/admin/site-settings')">
-            <el-icon><Setting /></el-icon>
-            网站设置
-          </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </nav>
     </div>
 
+    <!-- Right Section: User & Actions -->
     <div class="flex items-center space-x-4">
+      <!-- User Profile -->
       <el-dropdown trigger="click">
-        <div class="flex items-center cursor-pointer hover:bg-gray-50 px-3 py-2 rounded-md user-dropdown">
+        <div class="flex items-center space-x-2.5 p-1 px-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/80 cursor-pointer transition-all border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700">
           <el-avatar 
-            :size="32" 
-            class="mr-2" 
+            :size="24" 
             :src="userStore.userInfo?.avatar_url"
-            style="background-color: #409eff;"
+            class="user-avatar shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700"
           >
-            <el-icon v-if="!userStore.userInfo?.avatar_url" :size="18" style="color: white;"><User /></el-icon>
+            <el-icon v-if="!userStore.userInfo?.avatar_url" :size="12" class="text-zinc-500"><User /></el-icon>
           </el-avatar>
-          <span class="text-sm text-gray-700">{{ userStore.userInfo?.username || '用户' }}</span>
-          <el-icon class="ml-2" :size="14"><ArrowDown /></el-icon>
+          <div class="hidden md:flex flex-col items-start leading-tight">
+            <span class="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{{ userStore.userInfo?.username }}</span>
+          </div>
+          <el-icon :size="10" class="opacity-30"><ArrowDown /></el-icon>
         </div>
         <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item @click="handleProfile">
-              <el-icon><User /></el-icon>
-              个人资料
+          <el-dropdown-menu class="user-menu">
+            <el-dropdown-item @click="router.push('/profile')">
+              <el-icon><User /></el-icon> 个人资料
             </el-dropdown-item>
-            <el-dropdown-item divided @click="handleLogout">
-              <el-icon><SwitchButton /></el-icon>
-              退出登录
+            <el-dropdown-item @click="router.push('/security')">
+              <el-icon><Lock /></el-icon> 安全设置
+            </el-dropdown-item>
+            <el-dropdown-item divided @click="handleLogout" class="logout-item">
+              <el-icon><SwitchButton /></el-icon> 退出登录
             </el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
+
+      <!-- Mobile Menu Trigger -->
+      <button class="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center text-zinc-600 hover:bg-zinc-100" @click="mobileMenuVisible = true">
+        <el-icon :size="24"><Menu /></el-icon>
+      </button>
     </div>
-    
-    <!-- 移动端导航抽屉 -->
+
+    <!-- Mobile Navigation Drawer -->
     <el-drawer
       v-model="mobileMenuVisible"
       direction="ltr"
       size="280px"
       :show-close="false"
-      class="mobile-drawer"
+      class="mobile-nav-drawer"
     >
       <template #header>
-        <div class="mobile-drawer-header">
-          <img src="/logo-horizontal.svg" alt="AI Prompt Lab" class="mobile-logo" />
-          <el-button text @click="mobileMenuVisible = false">
-            <el-icon :size="20"><Close /></el-icon>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center">
+              <img src="/favicon.svg" alt="APL" class="w-5 h-5 brightness-0 invert" />
+            </div>
+            <span class="font-bold text-zinc-900">Prompt Lab</span>
+          </div>
+          <el-button circle @click="mobileMenuVisible = false">
+            <el-icon><Close /></el-icon>
           </el-button>
         </div>
       </template>
       
-      <div class="mobile-nav">
+      <div class="mobile-nav-content py-4 px-2">
+        <div class="section-title px-4 text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">主菜单</div>
         <router-link
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
-          class="mobile-nav-item"
-          :class="{ active: isActive(item.path) }"
+          class="mobile-nav-link flex items-center space-x-3 px-4 py-3 rounded-xl transition-all"
+          :class="isActive(item.path) ? 'bg-zinc-100 text-zinc-900 font-bold' : 'text-zinc-600 hover:bg-zinc-50'"
           @click="mobileMenuVisible = false"
         >
-          <el-icon><component :is="item.icon" /></el-icon>
+          <el-icon :size="20"><component :is="item.icon" /></el-icon>
           <span>{{ item.name }}</span>
         </router-link>
-        
-        <!-- 管理员菜单 -->
+
         <template v-if="userStore.userInfo?.role === 'admin'">
-          <div class="mobile-nav-divider"></div>
-          <div class="mobile-nav-title">网站管理</div>
+          <div class="section-title px-4 text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-6 mb-2">管理系统</div>
           <router-link 
             v-for="adminItem in adminItems" 
             :key="adminItem.path"
             :to="adminItem.path" 
-            class="mobile-nav-item"
-            :class="{ active: route.path === adminItem.path }"
+            class="mobile-nav-link flex items-center space-x-3 px-4 py-3 rounded-xl transition-all text-zinc-500 hover:bg-zinc-50"
             @click="mobileMenuVisible = false"
           >
-            <el-icon><component :is="adminItem.icon" /></el-icon>
+            <el-icon :size="18"><component :is="adminItem.icon" /></el-icon>
             <span>{{ adminItem.name }}</span>
           </router-link>
         </template>
-        
-        <div class="mobile-nav-divider"></div>
-        
-        <!-- 用户操作 -->
-        <div class="mobile-nav-item" @click="handleProfile(); mobileMenuVisible = false">
-          <el-icon><User /></el-icon>
-          <span>个人资料</span>
-        </div>
-        <div class="mobile-nav-item logout" @click="handleLogout">
-          <el-icon><SwitchButton /></el-icon>
-          <span>退出登录</span>
-        </div>
       </div>
     </el-drawer>
-  </div>
+  </header>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -173,69 +155,29 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-const siteName = ref('AI Prompt Lab')
 const mobileMenuVisible = ref(false)
 
-onMounted(async () => {
-  await loadSiteSettings()
-  await loadUserInfo()
-  
-  // 监听网站设置更新事件
-  window.addEventListener('site-settings-updated', (event: any) => {
-    siteName.value = event.detail.siteName
-    document.title = siteName.value
-  })
-})
-
-// 加载最新用户信息
-async function loadUserInfo() {
-  try {
-    const { authAPI } = await import('@/api')
-    const response = await authAPI.getCurrentUser() as any
-    if (response.data) {
-      // 更新 store 中的用户信息
-      Object.assign(userStore.userInfo || {}, response.data)
-    }
-  } catch (error) {
-    console.error('加载用户信息失败:', error)
-  }
-}
-
-async function loadSiteSettings() {
-  try {
-    const { siteAPI } = await import('@/api')
-    const response = await siteAPI.getPublicSettings() as any
-    if (response.data && response.data.siteName) {
-      siteName.value = response.data.siteName
-      document.title = siteName.value
-    }
-  } catch (error) {
-    console.error('读取网站设置失败:', error)
-    // 使用默认值
-    siteName.value = 'AI Prompt Lab'
-  }
-}
-
 const navItems = [
-  { name: 'Prompt 列表', path: '/prompts', icon: 'List' },
-  { name: '团队', path: '/teams', icon: 'UserFilled' },
-  { name: 'A/B 测试', path: '/compare', icon: 'DataAnalysis' },
+  { name: '工作台', path: '/prompts', icon: 'Memo' },
+  { name: '团队协作', path: '/teams', icon: 'UserFilled' },
+  { name: '对比测试', path: '/compare', icon: 'Connection' },
   { name: '模板库', path: '/templates', icon: 'Collection' },
-  { name: '使用统计', path: '/statistics', icon: 'DataLine' },
-  { name: 'API设置', path: '/settings', icon: 'Setting' }
+  { name: '统计', path: '/statistics', icon: 'Histogram' },
+  { name: '设置', path: '/settings', icon: 'Setting' }
 ]
 
 const adminItems = [
   { name: '用户管理', path: '/admin/users', icon: 'UserFilled' },
-  { name: 'Prompt管理', path: '/admin/prompts', icon: 'DocumentCopy' },
-  { name: '模板库管理', path: '/admin/templates', icon: 'Collection' },
+  { name: '内容管理', path: '/admin/prompts', icon: 'DocumentCopy' },
+  { name: '模板管理', path: '/admin/templates', icon: 'Collection' },
   { name: '团队管理', path: '/admin/teams', icon: 'UserFilled' },
-  { name: '配额管理', path: '/admin/quota', icon: 'Histogram' },
-  { name: '安全管理', path: '/admin/security-config', icon: 'Lock' },
-  { name: '网站设置', path: '/admin/site-settings', icon: 'Setting' }
+  { name: '配额审计', path: '/admin/quota', icon: 'Odometer' },
+  { name: '安全配置', path: '/admin/security-config', icon: 'Lock' },
+  { name: '站点设置', path: '/admin/site-settings', icon: 'Setting' }
 ]
 
 function isActive(path: string) {
+  if (path === '/prompts') return route.path === '/prompts' || route.path.startsWith('/editor')
   return route.path.startsWith(path)
 }
 
@@ -243,143 +185,68 @@ function isAdminActive() {
   return route.path.startsWith('/admin')
 }
 
-function handleProfile() {
-  router.push('/profile')
-}
-
 async function handleLogout() {
   try {
     await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      type: 'warning'
+      type: 'warning',
+      customClass: 'carbon-message-box'
     })
-    
     userStore.logout()
     router.push('/login')
-    ElMessage.success('已退出登录')
+    ElMessage.success('已安全退出')
   } catch {
-    // 用户取消
+    // Cancelled
   }
 }
 </script>
 
 <style scoped>
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
+.header-container {
+  background: var(--bg-base);
 }
 
-.logo-link {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  transition: opacity 0.2s ease;
+.logo-icon-bg {
+  /* No more brand gradient, use solid dark/white */
 }
 
-.logo-link:hover {
-  opacity: 0.8;
+.user-avatar {
+  background-color: var(--bg-sidebar);
 }
 
-.logo {
-  height: 48px;
-  width: auto;
+:deep(.admin-menu), :deep(.user-menu) {
+  border-radius: 12px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-card);
 }
 
-.admin-dropdown {
-  display: inline-flex;
-  align-items: center;
+:deep(.el-dropdown-menu__item) {
+  border-radius: 6px;
+  margin-bottom: 2px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.user-dropdown {
-  transition: all 0.2s ease;
+:deep(.el-dropdown-menu__item:last-child) {
+  margin-bottom: 0;
 }
 
-.user-dropdown:hover {
-  background-color: #f5f7fa;
+:deep(.logout-item) {
+  color: #f43f5e;
 }
 
-.user-dropdown :deep(.el-avatar) {
-  border: 2px solid #e4e7ed;
+:deep(.logout-item:hover) {
+  background-color: #fff1f2 !important;
+  color: #e11d48 !important;
 }
 
-/* 移动端样式 */
-.mobile-menu-btn {
-  padding: 0.5rem;
-}
-
-.mobile-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.mobile-logo {
-  height: 36px;
-}
-
-.mobile-nav {
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem 0;
-}
-
-.mobile-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
-  color: #4b5563;
-  text-decoration: none;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.mobile-nav-item:hover,
-.mobile-nav-item.active {
-  background: #f3f4f6;
-  color: #409eff;
-}
-
-.mobile-nav-item.logout {
-  color: #ef4444;
-}
-
-.mobile-nav-item.logout:hover {
-  background: #fef2f2;
-  color: #dc2626;
-}
-
-.mobile-nav-divider {
-  height: 1px;
-  background: #e5e7eb;
-  margin: 0.5rem 1rem;
-}
-
-.mobile-nav-title {
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
-  color: #9ca3af;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-/* 响应式适配 */
 @media (max-width: 768px) {
-  .logo {
-    height: 32px;
-  }
-  
-  .user-dropdown span {
-    display: none;
-  }
-  
-  .user-dropdown .el-icon:last-child {
-    display: none;
+  .logo-link span {
+    font-size: 14px;
   }
 }
 </style>
-
