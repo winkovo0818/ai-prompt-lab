@@ -53,7 +53,7 @@ async def get_my_teams(
         # 统计成员�?        member_count = db.exec(
             select(func.count(TeamMember.id)).where(
                 TeamMember.team_id == team.id,
-                TeamMember.status == "active"
+                
             )
         ).first() or 0
         
@@ -145,7 +145,7 @@ async def get_team(
     member_count = db.exec(
         select(func.count(TeamMember.id)).where(
             TeamMember.team_id == team.id,
-            TeamMember.status == "active"
+            
         )
     ).first() or 0
     
