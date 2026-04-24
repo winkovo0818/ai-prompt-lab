@@ -1,7 +1,7 @@
 """Prompt Commit Model"""
 from typing import Optional
 from datetime import datetime
-from sqlmodel import SQLModel, Field, JSON
+from sqlmodel import SQLModel, Field, JSON, Relationship
 
 
 class PromptCommit(SQLModel, table=True):
@@ -17,9 +17,10 @@ class PromptCommit(SQLModel, table=True):
     created_by: int = Field(foreign_key="user.id", nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships (defined in branch.py to avoid circular imports)
-    # branch: PromptBranch = Relationship(back_populates="commits")
-    # parent: Optional[PromptCommit] = Relationship()
+    # Relationships
+    branch: "PromptBranch" = Relationship(back_populates="commits")
+    parent: Optional["PromptCommit"] = Relationship(back_populates="children")
+    children: list["PromptCommit"] = Relationship()
 
 
 from app.models.branch import PromptBranch

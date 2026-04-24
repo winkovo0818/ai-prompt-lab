@@ -1,7 +1,7 @@
 """Prompt Pull Request Model"""
 from typing import Optional
 from datetime import datetime
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 
 
 class PromptPullRequest(SQLModel, table=True):
@@ -9,7 +9,7 @@ class PromptPullRequest(SQLModel, table=True):
     __tablename__ = "prompt_pull_request"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    prompt_id: int = Field(foreign_key="prompt.id", nullable=False, index=True)
+    prompt_id: int = Field(foreign_key="prompts.id", nullable=False, index=True)
     source_branch_id: int = Field(foreign_key="prompt_branch.id", nullable=False)
     target_branch_id: int = Field(foreign_key="prompt_branch.id", nullable=False)
     title: str = Field(max_length=255, nullable=False)
@@ -22,7 +22,6 @@ class PromptPullRequest(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relationships (defined in branch.py to avoid circular imports)
-
-
-from app.models.branch import PromptBranch
+    # Relationships
+    source_branch: "PromptBranch" = Relationship(back_populates="source_prs")
+    target_branch: "PromptBranch" = Relationship(back_populates="target_prs")
