@@ -18,23 +18,20 @@ router = APIRouter(prefix="/api/prompt", tags=["Prompt管理"])
 
 def check_prompt_access(prompt_id: int, current_user: User, db: Session, require_edit: bool = False) -> Tuple[Prompt, Optional[dict]]:
     """
-    检查用户是否有权访问指定 Prompt（可复用的权限检查函数）
+    检查用户是否有权访问指�?Prompt（可复用的权限检查函数）
 
     Args:
         prompt_id: Prompt ID
         current_user: 当前用户
-        db: 数据库会话
-        require_edit: 是否需要编辑权限
-
+        db: 数据库会�?        require_edit: 是否需要编辑权�?
     Returns:
         (prompt, team_info) - prompt 对象和团队信息（有的话）
 
     Raises:
-        HTTPException - 无权访问时抛出
-    """
+        HTTPException - 无权访问时抛�?    """
     prompt = db.get(Prompt, prompt_id)
     if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt 不存在")
+        raise HTTPException(status_code=404, detail="Prompt 不存�?)
 
     team_permission = None
     team_info = None
@@ -67,12 +64,11 @@ def check_prompt_access(prompt_id: int, current_user: User, db: Session, require
                 }
 
         if not team_permission:
-            raise HTTPException(status_code=403, detail="无权访问该 Prompt")
+            raise HTTPException(status_code=403, detail="无权访问�?Prompt")
 
-    # 如果需要编辑权限
-    if require_edit and prompt.user_id != current_user.id and team_permission != "edit":
+    # 如果需要编辑权�?    if require_edit and prompt.user_id != current_user.id and team_permission != "edit":
         if not (current_user.role == "admin"):
-            raise HTTPException(status_code=403, detail="无权编辑该 Prompt")
+            raise HTTPException(status_code=403, detail="无权编辑�?Prompt")
 
     return prompt, team_info
 
@@ -120,8 +116,7 @@ async def create_prompt(
         content=new_prompt.content,
         description=new_prompt.description,
         tags=new_prompt.tags,
-        is_favorite=False,  # 新创建的 Prompt 默认未收藏
-        is_public=new_prompt.is_public,
+        is_favorite=False,  # 新创建的 Prompt 默认未收�?        is_public=new_prompt.is_public,
         version=new_prompt.version,
         created_at=new_prompt.created_at,
         updated_at=new_prompt.updated_at
@@ -138,7 +133,7 @@ async def get_prompt_list(
     tags: Optional[str] = None,
     is_favorite: Optional[bool] = None,
     is_public: Optional[bool] = None,
-    include_team: Optional[bool] = Query(True, description="是否包含团队共享的 Prompt"),
+    include_team: Optional[bool] = Query(True, description="是否包含团队共享�?Prompt"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_session)
 ):
@@ -149,8 +144,7 @@ async def get_prompt_list(
     team_prompt_info = {}  # prompt_id -> {team_name, permission}
     
     if include_team:
-        # 获取用户加入的团队
-        user_teams = db.exec(
+        # 获取用户加入的团�?        user_teams = db.exec(
             select(TeamMember).where(
                 TeamMember.user_id == current_user.id
             )
@@ -159,14 +153,14 @@ async def get_prompt_list(
         team_ids = [tm.team_id for tm in user_teams]
         
         if team_ids:
-            # 获取这些团队共享的 Prompt
+            # 获取这些团队共享�?Prompt
             from ..models.team import Team
             team_prompts = db.exec(
                 select(TeamPrompt).where(TeamPrompt.team_id.in_(team_ids))
             ).all()
             
             for tp in team_prompts:
-                # 排除自己创建的 Prompt（避免重复）
+                # 排除自己创建�?Prompt（避免重复）
                 prompt = db.get(Prompt, tp.prompt_id)
                 if prompt and prompt.user_id != current_user.id:
                     team_prompt_ids.add(tp.prompt_id)
@@ -204,12 +198,11 @@ async def get_prompt_list(
         )
     
     # 标签过滤（简化处理）
-    # 实际项目中可能需要更复杂的 JSON 查询
+    # 实际项目中可能需要更复杂�?JSON 查询
     
     # 收藏过滤
     if is_favorite is not None:
-        # 使用关联表过滤收藏
-        if is_favorite:
+        # 使用关联表过滤收�?        if is_favorite:
             # 只显示当前用户收藏的
             favorite_statement = select(UserPromptFavorite.prompt_id).where(
                 UserPromptFavorite.user_id == current_user.id
@@ -217,16 +210,14 @@ async def get_prompt_list(
             favorite_ids = db.exec(favorite_statement).all()
             statement = statement.where(Prompt.id.in_(favorite_ids))
         else:
-            # 只显示未收藏的
-            favorite_statement = select(UserPromptFavorite.prompt_id).where(
+            # 只显示未收藏�?            favorite_statement = select(UserPromptFavorite.prompt_id).where(
                 UserPromptFavorite.user_id == current_user.id
             )
             favorite_ids = db.exec(favorite_statement).all()
             if favorite_ids:
                 statement = statement.where(~Prompt.id.in_(favorite_ids))
     
-    # 公开状态过滤
-    if is_public is not None:
+    # 公开状态过�?    if is_public is not None:
         statement = statement.where(Prompt.is_public == is_public)
     
     # 排序
@@ -241,8 +232,7 @@ async def get_prompt_list(
     statement = statement.offset(skip).limit(limit)
     prompts = db.exec(statement).all()
 
-    # 获取当前用户的所有收藏
-    favorite_statement = select(UserPromptFavorite.prompt_id).where(
+    # 获取当前用户的所有收�?    favorite_statement = select(UserPromptFavorite.prompt_id).where(
         UserPromptFavorite.user_id == current_user.id
     )
     favorite_ids = set(db.exec(favorite_statement).all())
@@ -286,10 +276,9 @@ async def get_prompt_detail(
     prompt = db.get(Prompt, prompt_id)
     
     if not prompt:
-        return error_response(code=2001, message="Prompt 不存在")
+        return error_response(code=2001, message="Prompt 不存�?)
     
-    # 检查团队共享权限
-    team_permission = None
+    # 检查团队共享权�?    team_permission = None
     team_info = None
     
     if prompt.user_id != current_user.id and not prompt.is_public:
@@ -321,7 +310,7 @@ async def get_prompt_detail(
                 }
         
         if not team_permission:
-            return error_response(code=2002, message="无权访问该 Prompt")
+            return error_response(code=2002, message="无权访问�?Prompt")
     
     # 检查当前用户是否已收藏
     favorite_statement = select(UserPromptFavorite).where(
@@ -367,17 +356,16 @@ async def update_prompt(
         prompt = db.get(Prompt, prompt_id)
         
         if not prompt:
-            return error_response(code=2001, message="Prompt 不存在")
+            return error_response(code=2001, message="Prompt 不存�?)
         
-        # 权限检查 - 支持团队共享编辑权限
+        # 权限检�?- 支持团队共享编辑权限
         can_edit = prompt.user_id == current_user.id
         
         if not can_edit:
             # 检查是否有团队编辑权限
             user_teams = db.exec(
                 select(TeamMember).where(
-                    TeamMember.user_id == current_user.id,
-                    TeamMember.status == "active"
+                    TeamMember.user_id == current_user.id
                 )
             ).all()
             
@@ -396,7 +384,7 @@ async def update_prompt(
                     can_edit = True
         
         if not can_edit:
-            return error_response(code=2003, message="无权修改该 Prompt")
+            return error_response(code=2003, message="无权修改�?Prompt")
         
         # 更新字段
         content_changed = False
@@ -417,8 +405,7 @@ async def update_prompt(
         
         prompt.updated_at = datetime.utcnow()
         
-        # 如果内容有修改，创建新版本
-        if content_changed:
+        # 如果内容有修改，创建新版�?        if content_changed:
             prompt.version += 1
             
             version = PromptVersion(
@@ -474,11 +461,10 @@ async def delete_prompt(
     prompt = db.get(Prompt, prompt_id)
     
     if not prompt:
-        return error_response(code=2001, message="Prompt 不存在")
+        return error_response(code=2001, message="Prompt 不存�?)
     
-    # 权限检查
-    if prompt.user_id != current_user.id:
-        return error_response(code=2003, message="无权删除该 Prompt")
+    # 权限检�?    if prompt.user_id != current_user.id:
+        return error_response(code=2003, message="无权删除�?Prompt")
     
     db.delete(prompt)
     db.commit()
@@ -492,16 +478,15 @@ async def get_prompt_versions(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_session)
 ):
-    """获取 Prompt 的版本历史"""
+    """获取 Prompt 的版本历�?""
     
     prompt = db.get(Prompt, prompt_id)
     
     if not prompt:
-        return error_response(code=2001, message="Prompt 不存在")
+        return error_response(code=2001, message="Prompt 不存�?)
     
-    # 权限检查
-    if prompt.user_id != current_user.id and not prompt.is_public:
-        return error_response(code=2002, message="无权访问该 Prompt")
+    # 权限检�?    if prompt.user_id != current_user.id and not prompt.is_public:
+        return error_response(code=2002, message="无权访问�?Prompt")
     
     # 获取版本列表
     statement = select(PromptVersion).where(
@@ -533,12 +518,12 @@ async def toggle_favorite(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_session)
 ):
-    """切换收藏状态"""
+    """切换收藏状�?""
     
-    # 检查 Prompt 是否存在
+    # 检�?Prompt 是否存在
     prompt = db.get(Prompt, prompt_id)
     if not prompt:
-        return error_response(code=2001, message="Prompt 不存在")
+        return error_response(code=2001, message="Prompt 不存�?)
     
     # 检查当前用户是否已收藏
     statement = select(UserPromptFavorite).where(
@@ -553,7 +538,7 @@ async def toggle_favorite(
         db.commit()
         return success_response(
             data={"is_favorite": False},
-            message="已取消收藏"
+            message="已取消收�?
         )
     else:
         # 添加收藏
@@ -565,6 +550,6 @@ async def toggle_favorite(
         db.commit()
         return success_response(
             data={"is_favorite": True},
-            message="已收藏"
+            message="已收�?
         )
 
