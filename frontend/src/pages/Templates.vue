@@ -482,8 +482,7 @@ const useTemplate = async (id: number) => {
       if (Object.keys(defaultValues).length > 0) {
         const cacheKey = `prompt_variables_${promptId}`
         localStorage.setItem(cacheKey, JSON.stringify(defaultValues))
-        console.log('✅ 已保存变量默认值到缓存:', defaultValues)
-      }
+              }
     }
     
     ElMessage.success('模板已复制到您的 Prompt 列表')

@@ -38,13 +38,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 def decode_access_token(token: str) -> Optional[dict]:
     """解码访问令牌"""
     try:
-        print(f"[Security] 开始解码 Token...")
-        print(f"[Security] SECRET_KEY: {settings.SECRET_KEY[:20]}...")
-        print(f"[Security] ALGORITHM: {settings.ALGORITHM}")
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        print(f"[OK] Token 解码成功: {payload}")
         return payload
-    except JWTError as e:
-        print(f"[ERROR] Token 解码失败: {e}")
+    except JWTError:
         return None
 

@@ -304,8 +304,7 @@ async function loadGlobalAIConfig() {
     const response = await systemAPI.getGlobalAIConfig()
     // 响应拦截器返回的格式是 { data: ..., message: ... }
     globalAIConfig.value = response.data
-    console.log('[DEBUG] 加载的全局AI配置:', globalAIConfig.value)
-  } catch (error) {
+      } catch (error) {
     console.error('加载全局AI配置失败:', error)
   }
 }

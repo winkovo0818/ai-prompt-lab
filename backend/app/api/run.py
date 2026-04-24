@@ -174,10 +174,8 @@ async def run_prompt(
         )
         db.add(execution_history)
         db.commit()
-        print(f"✅ 执行历史已保存 (ID: {execution_history.id})")
-    except Exception as e:
-        print(f"⚠️ 保存执行历史失败: {str(e)}")
-        # 不影响主流程，继续返回结果
+    except Exception:
+        pass
     
     # 记录配额使用量
     try:
@@ -189,8 +187,8 @@ async def run_prompt(
             cost=result["cost"],
             model=request.model
         )
-    except Exception as e:
-        print(f"⚠️ 记录配额使用量失败: {str(e)}")
+    except Exception:
+        pass
     
     # 构造响应
     response_data = {
@@ -218,12 +216,7 @@ async def get_available_models(
     db: Session = Depends(get_session)
 ):
     """获取可用的模型列表"""
-    print(f"[DEBUG] /api/run/models 被调用")
-    print(f"[DEBUG] 用户: {current_user.username} (ID: {current_user.id})")
-    
     models = OpenAIService.get_available_models(db, current_user.id)
-    
-    print(f"[DEBUG] 返回 {len(models)} 个模型")
     return success_response(data=models)
 
 

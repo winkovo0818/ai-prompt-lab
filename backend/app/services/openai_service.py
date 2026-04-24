@@ -80,9 +80,7 @@ class OpenAIService:
             from ..services.encryption_service import EncryptionService
             try:
                 api_key = EncryptionService.decrypt_api_key(ai_config.api_key)
-                print(f"[DEBUG] AI 配置解密成功: {ai_config.name}, Key 长度: {len(api_key)}")
             except Exception as e:
-                print(f"[ERROR] API Key 解密失败: {str(e)}")
                 raise ValueError(f"API Key 解密失败: {str(e)}")
         
         # 创建 OpenAI 客户端
@@ -190,33 +188,26 @@ class OpenAIService:
     @staticmethod
     def get_available_models(db: Session, user_id: int) -> List[Dict[str, str]]:
         """获取用户配置的可用模型列表（包括全局配置）"""
-        print(f"[DEBUG] 查询用户 {user_id} 的 AI 配置...")
-        
         # 查询用户自己的配置
         user_statement = select(AIConfig).where(
             AIConfig.user_id == user_id,
             AIConfig.is_global == False
         )
         user_configs = db.exec(user_statement).all()
-        
+
         # 查询全局配置
         global_statement = select(AIConfig).where(AIConfig.is_global == True)
         global_configs = db.exec(global_statement).all()
-        
+
         # 合并配置：全局配置在前
         all_configs = list(global_configs) + list(user_configs)
-        
-        print(f"[DEBUG] 找到 {len(global_configs)} 个全局配置, {len(user_configs)} 个用户配置")
-        for config in all_configs:
-            print(f"[DEBUG] - {config.name}: {config.model} (全局: {config.is_global})")
-        
+
         models = []
         for config in all_configs:
             model_name = config.name
-            # 为全局配置添加标识
             if config.is_global:
                 model_name = f"{config.name} [全局]"
-            
+
             models.append({
                 "id": config.model,
                 "name": model_name,
@@ -225,7 +216,6 @@ class OpenAIService:
                 "base_url": config.base_url,
                 "is_global": config.is_global
             })
-        
-        print(f"[DEBUG] 返回模型列表: {models}")
+
         return models
 

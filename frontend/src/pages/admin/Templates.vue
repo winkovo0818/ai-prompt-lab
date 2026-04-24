@@ -273,7 +273,6 @@ async function loadCategories() {
   try {
     const response = await templateAPI.getCategories() as any
     categories.value = response.data
-    console.log('✅ 分类加载成功:', categories.value)
   } catch (error) {
     console.error('❌ 加载分类失败:', error)
   }
@@ -296,11 +295,9 @@ async function loadTemplates() {
     }
 
     const response = await templateAPI.getList(params) as any
-    console.log('📦 模板数据:', response.data.items)
-    
+
     templates.value = response.data.items.map((item: any) => {
       const category = categories.value.find(c => c.id === item.category_id)
-      console.log(`模板 ${item.id} (category_id: ${item.category_id}) -> 分类: ${category?.name || '未找到'}`)
       return {
         ...item,
         category_name: category?.name || '未知'
@@ -322,7 +319,6 @@ function formatDate(dateString: string) {
     const date = new Date(dateString)
     // 检查日期是否有效
     if (isNaN(date.getTime())) {
-      console.warn('无效的日期格式:', dateString)
       return '-'
     }
     return date.toLocaleString('zh-CN', {

@@ -133,31 +133,13 @@ router.beforeEach((to, from, next) => {
   const requiresAuth = to.meta.requiresAuth !== false
   const requiresAdmin = to.meta.requiresAdmin === true
 
-  console.log('🛡️ 路由守卫:', {
-    to: to.path,
-    from: from.path,
-    token: userStore.token ? '存在' : '不存在',
-    userInfo: userStore.userInfo ? '存在' : '不存在',
-    isLoggedIn: userStore.isLoggedIn,
-    requiresAuth,
-    requiresAdmin,
-    userRole: userStore.userInfo?.role
-  })
-
   if (requiresAuth && !userStore.isLoggedIn) {
-    // 需要登录但未登录，跳转到登录页
-    console.warn('需要登录但未登录，跳转到登录页')
     next({ name: 'Login', query: { redirect: to.fullPath } })
   } else if (requiresAdmin && userStore.userInfo?.role !== 'admin') {
-    // 需要管理员权限但不是管理员
-    console.warn('需要管理员权限')
     next({ name: 'PromptList' })
   } else if (to.name === 'Login' && userStore.isLoggedIn) {
-    // 已登录访问登录页，跳转到首页
-    console.log('已登录访问登录页，跳转到首页')
     next({ name: 'PromptList' })
   } else {
-    console.log('通过路由守卫')
     next()
   }
 })

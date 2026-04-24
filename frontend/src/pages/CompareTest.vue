@@ -486,9 +486,7 @@ async function handlePromptSelect() {
     }
   }
   
-  console.log('已加载的Prompts:', selectedPrompts.value)
-  console.log('提取的变量:', allVariables.value)
-}
+  }
 
 async function handleRunTest() {
   if (!canRunTest.value) {
@@ -507,13 +505,7 @@ async function handleRunTest() {
       return
     }
 
-    console.log('开始运行AB测试，配置:', {
-      test_name: testConfig.test_name,
-      prompt_ids: testConfig.prompt_ids,
-      input_variables: testConfig.input_variables,
-      file_variables: testConfig.file_variables
-    })
-
+    
     const response = await abtestAPI.create({
       test_name: testConfig.test_name,
       prompt_ids: testConfig.prompt_ids,
@@ -526,13 +518,7 @@ async function handleRunTest() {
       generate_report: testConfig.generate_report
     })
 
-    console.log('AB测试完整响应:', response)
-    console.log('response.data:', response.data)
-    
-    testResults.value = response.data
-    console.log('设置testResults.value为:', testResults.value)
-    console.log('testResults.value.results:', testResults.value?.results)
-    
+        
     ElMessage.success('测试完成')
     
     // 刷新历史记录列表
@@ -558,11 +544,7 @@ function resetForm() {
 async function loadTestHistory() {
   try {
     const response = await abtestAPI.getList({ skip: 0, limit: 50 }) as any
-    console.log('历史记录响应:', response)
-    console.log('response.data:', response.data)
-    testHistory.value = response.data.items || []
-    console.log('加载测试历史:', testHistory.value)
-  } catch (error) {
+      } catch (error) {
     console.error('加载测试历史失败:', error)
   }
 }

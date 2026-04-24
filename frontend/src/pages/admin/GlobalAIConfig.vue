@@ -176,8 +176,7 @@ const loadConfig = async () => {
     Object.assign(config, data)
     originalConfig.value = { ...data }
     
-    console.log('[DEBUG] GlobalAIConfig 加载的配置:', config)
-    ElMessage.success('配置加载成功')
+        ElMessage.success('配置加载成功')
   } catch (error: any) {
     console.error('[ERROR] 加载配置失败:', error)
     ElMessage.error(error.response?.data?.detail || '加载配置失败')

@@ -66,7 +66,6 @@ export const useConfigStore = defineStore('config', () => {
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
       saveDefaultParams()
-      console.log('✅ 模型配置已自动保存')
     }, 500)
   })
 
@@ -128,14 +127,9 @@ export const useConfigStore = defineStore('config', () => {
   // 加载用户配置的可用模型列表
   async function loadAvailableModels() {
     try {
-      console.log('开始加载模型列表...')
       const response = await runAPI.getModels()
-      console.log('API 响应:', response)
       const models = response.data as any[]
-      
-      console.log('加载的模型列表:', models)
-      console.log('模型数量:', models?.length)
-      
+
       if (models && models.length > 0) {
         availableModels.value = models.map(model => ({
           id: model.id,
@@ -143,17 +137,12 @@ export const useConfigStore = defineStore('config', () => {
           description: model.description || '',
           provider: model.provider || 'Custom'
         }))
-        
-        console.log('模型列表已更新:', availableModels.value)
-        
+
         // 如果当前选择的模型不在列表中，选择第一个
         if (!models.find(m => m.id === selectedModel.value)) {
           selectedModel.value = models[0].id
-          console.log('切换到默认模型:', selectedModel.value)
         }
       } else {
-        console.warn('未找到配置的模型，请先在设置页面添加 AI 配置')
-        // 提供一个默认的后备列表
         availableModels.value = [{
           id: 'not-configured',
           name: '请先配置 AI',
@@ -162,8 +151,7 @@ export const useConfigStore = defineStore('config', () => {
         }]
       }
     } catch (error) {
-      console.error('加载可用模型失败:', error) 
-      // 提供后备列表
+      console.error('加载可用模型失败:', error)
       availableModels.value = [{
         id: 'error',
         name: '加载失败',

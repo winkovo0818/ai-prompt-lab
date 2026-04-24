@@ -15,21 +15,13 @@ export const useUserStore = defineStore('user', () => {
   async function login(username: string, password: string) {
     try {
       const response = await authAPI.login({ username, password })
-      console.log('🔐 登录响应:', response)
       const { access_token, user } = response.data
-
-      console.log('🔐 准备保存 token:', access_token)
-      console.log('🔐 准备保存 user:', user)
 
       token.value = access_token
       userInfo.value = user
 
       tokenStorage.setToken(access_token)
       tokenStorage.setUser(user)
-
-      console.log('✅ Token 已保存到 store:', token.value)
-      console.log('✅ UserInfo 已保存到 store:', userInfo.value)
-      console.log('✅ LocalStorage token:', localStorage.getItem('ai_prompt_lab_token'))
 
       return true
     } catch (error) {

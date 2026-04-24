@@ -778,8 +778,7 @@ function loadVariableValuesFromCache() {
     const cached = localStorage.getItem(cacheKey)
     if (cached) {
       const cachedData = JSON.parse(cached)
-      console.log('📦 从缓存恢复变量值:', cachedData)
-      
+            
       // 兼容旧格式（直接是变量值对象）
       let cachedTextVars = cachedData.textVariables || cachedData
       let cachedFileVars = cachedData.fileVariables || {}
@@ -800,13 +799,11 @@ function loadVariableValuesFromCache() {
       
       if (Object.keys(restoredTextValues).length > 0) {
         variableValues.value = { ...variableValues.value, ...restoredTextValues }
-        console.log('✅ 已恢复文本变量值')
-      }
+              }
       
       if (Object.keys(restoredFileValues).length > 0) {
         fileVariableValues.value = { ...fileVariableValues.value, ...restoredFileValues }
-        console.log('✅ 已恢复文件变量值')
-      }
+              }
     }
   } catch (error) {
     console.error('恢复变量值失败:', error)
@@ -825,8 +822,7 @@ function saveVariableValuesToCache() {
         fileVariables: fileVariableValues.value
       }
       localStorage.setItem(cacheKey, JSON.stringify(cacheData))
-      console.log('💾 变量值已缓存（文本+文件）')
-    } catch (error) {
+          } catch (error) {
       console.error('保存变量值失败:', error)
     }
   }, 500)
@@ -881,8 +877,7 @@ function saveDraft() {
     }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
     lastSavedAt.value = new Date().toLocaleTimeString('zh-CN')
-    console.log('草稿已保存:', lastSavedAt.value)
-  } catch (e) {
+      } catch (e) {
     console.error('保存草稿失败:', e)
   }
 }
@@ -934,8 +929,7 @@ onMounted(async () => {
   
   try {
     await configStore.loadAvailableModels()
-    console.log('✅ loadAvailableModels 完成')
-  } catch (error) {
+      } catch (error) {
     console.error('❌ loadAvailableModels 失败:', error)
   }
   
@@ -1074,11 +1068,9 @@ async function handleRun() {
       max_tokens: configStore.maxTokens
     })
 
-    console.log('📊 执行结果响应:', response)
-    // axios 拦截器返回的是 { data: ..., message: ... }
+        // axios 拦截器返回的是 { data: ..., message: ... }
     executionResult.value = response.data
-    console.log('✅ 结果已设置:', executionResult.value)
-    
+        
     // 执行成功后刷新历史记录列表
     if (isEditMode.value) {
       await loadExecutionHistory()
@@ -1209,8 +1201,7 @@ async function loadVersionHistory() {
       currentVersion.value = Math.max(...versions.value.map((v: any) => v.version))
     }
     
-    console.log('版本历史:', versions.value)
-  } catch (error) {
+      } catch (error) {
     console.error('加载版本历史失败:', error)
     ElMessage.error('加载版本历史失败')
   }
@@ -1277,8 +1268,7 @@ async function loadExecutionHistory() {
       limit: 50
     }) as any
     executionHistoryList.value = response.data.items || []
-    console.log('执行历史:', executionHistoryList.value)
-  } catch (error) {
+      } catch (error) {
     console.error('加载执行历史失败:', error)
     ElMessage.error('加载执行历史失败')
   }

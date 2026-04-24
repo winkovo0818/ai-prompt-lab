@@ -715,8 +715,7 @@ async function handleJoinByCode() {
     await loadTeams()
   } catch (error: any) {
     // 错误已在 axios 拦截器中处理，这里不再重复显示
-    console.log('加入团队失败:', error)
-  } finally {
+      } finally {
     joining.value = false
   }
 }

@@ -171,20 +171,22 @@ async def get_prompt_list(
     
     # 排序
     statement = statement.order_by(Prompt.updated_at.desc())
-    
+
+    # 获取总数
+    from sqlmodel import func
+    count_statement = select(func.count()).select_from(statement)
+    total_count = db.exec(count_statement).one()
+
     # 分页
-    total_statement = statement
-    total_count = len(db.exec(total_statement).all())
-    
     statement = statement.offset(skip).limit(limit)
     prompts = db.exec(statement).all()
-    
+
     # 获取当前用户的所有收藏
     favorite_statement = select(UserPromptFavorite.prompt_id).where(
         UserPromptFavorite.user_id == current_user.id
     )
     favorite_ids = set(db.exec(favorite_statement).all())
-    
+
     # 转换为列表项
     items = []
     for prompt in prompts:
@@ -337,11 +339,7 @@ async def update_prompt(
         if not can_edit:
             return error_response(code=2003, message="无权修改该 Prompt")
         
-        # 打印调试信息
-        print(f"[DEBUG] 更新 Prompt ID: {prompt_id}")
-        print(f"[DEBUG] Content 长度: {len(prompt_data.content) if prompt_data.content else 0}")
-        
-        # 检查内容是否有实质性修改
+        # 更新字段
         content_changed = False
         if prompt_data.content and prompt_data.content != prompt.content:
             content_changed = True
@@ -374,11 +372,9 @@ async def update_prompt(
             )
             db.add(version)
         
-        print(f"[DEBUG] 准备提交到数据库...")
         db.add(prompt)
         db.commit()
         db.refresh(prompt)
-        print(f"[DEBUG] 提交成功!")
         
         # 检查当前用户是否已收藏
         favorite_statement = select(UserPromptFavorite).where(
@@ -404,11 +400,6 @@ async def update_prompt(
         return success_response(data=response.model_dump(), message="Prompt 更新成功")
     
     except Exception as e:
-        print(f"[ERROR] 更新 Prompt 失败: {str(e)}")
-        print(f"[ERROR] 错误类型: {type(e).__name__}")
-        import traceback
-        print(f"[ERROR] 完整错误栈:")
-        traceback.print_exc()
         db.rollback()
         return error_response(code=2004, message=f"更新失败: {str(e)}")
 

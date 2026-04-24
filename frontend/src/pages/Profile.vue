@@ -319,12 +319,10 @@ onMounted(async () => {
 async function loadUserInfo() {
   try {
     const response = await authAPI.getCurrentUser() as any
-    console.log('获取用户信息响应:', response)
-    
+        
     // 响应格式是 { data: {...}, message: '...' }，没有 code 字段
     if (response.data) {
-      console.log('用户数据:', response.data)
-      // 更新 store
+            // 更新 store
       Object.assign(userStore.userInfo || {}, response.data)
       
       // 填充表单

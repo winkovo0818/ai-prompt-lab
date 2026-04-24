@@ -25,12 +25,7 @@ def get_global_ai_config(
     # 查找全局配置
     statement = select(AIConfig).where(AIConfig.is_global == True).limit(1)
     global_config = db.exec(statement).first()
-    
-    # 调试日志
-    print(f"[DEBUG] 全局配置查询结果: {global_config}")
-    if global_config:
-        print(f"[DEBUG] 全局配置详情: ID={global_config.id}, Name={global_config.name}, Model={global_config.model}, is_global={global_config.is_global}")
-    
+
     if global_config:
         # API Key 脱敏显示
         api_key = global_config.api_key
@@ -52,7 +47,6 @@ def get_global_ai_config(
                 "description": global_config.description
             }
         }
-        print(f"[DEBUG] 返回数据: {result_data}")
         return result_data
     else:
         # 没有全局配置
@@ -69,7 +63,6 @@ def get_global_ai_config(
                 "description": ""
             }
         }
-        print(f"[DEBUG] 返回数据(无全局配置): {result_data}")
         return result_data
 
 
@@ -203,15 +196,11 @@ async def test_global_ai_config(
         
         if not global_config:
             raise HTTPException(status_code=400, detail="未配置全局AI")
-        
-        print(f"[DEBUG] 测试全局配置: Model={global_config.model}, Base URL={global_config.base_url}")
-        
+
         # 解密API Key
         try:
             api_key = EncryptionService.decrypt_api_key(global_config.api_key)
-            print(f"[DEBUG] API Key 解密成功，长度: {len(api_key) if api_key else 0}")
         except Exception as e:
-            print(f"[ERROR] API Key 解密失败: {str(e)}")
             raise HTTPException(status_code=500, detail=f"API Key 解密失败: {str(e)}")
         
         # 测试调用
@@ -228,15 +217,13 @@ async def test_global_ai_config(
             base_url=global_config.base_url,
             http_client=http_client
         )
-        
-        print(f"[DEBUG] 开始调用 AI API...")
+
         response = await client.chat.completions.create(
             model=global_config.model,
             messages=[{"role": "user", "content": "Hi"}],
             max_tokens=10
         )
-        print(f"[DEBUG] AI API 调用成功")
-        
+
         # 关闭 http 客户端
         await http_client.aclose()
         
@@ -253,20 +240,16 @@ async def test_global_ai_config(
     except HTTPException:
         raise
     except httpx.TimeoutException as e:
-        print(f"[ERROR] API 调用超时: {str(e)}")
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail=f"API 调用超时，请检查网络连接和 Base URL 配置是否正确。错误: {str(e)}"
         )
     except httpx.ConnectError as e:
-        print(f"[ERROR] 无法连接到 API: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"无法连接到 API 服务器，请检查 Base URL 是否正确。错误: {str(e)}"
         )
     except Exception as e:
-        print(f"[ERROR] 测试失败: {type(e).__name__}: {str(e)}")
-        error_msg = str(e)
         
         # 提供更友好的错误提示
         if "api_key" in error_msg.lower() or "authentication" in error_msg.lower():

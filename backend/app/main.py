@@ -13,12 +13,13 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# 配置 CORS
+# 配置 CORS（生产环境应指定具体域名）
+ALLOWED_ORIGINS = settings.CORS_ORIGINS if hasattr(settings, 'CORS_ORIGINS') else ["http://localhost:5173", "http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 临时允许所有来源，方便调试
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
