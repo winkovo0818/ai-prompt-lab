@@ -116,6 +116,7 @@
                 </el-form-item>
 
                 <el-form-item label="Prompt 内容">
+                  <PromptStructureGuide :content="formData.content" />
                   <PromptCodeEditor
                     v-model="formData.content"
                     placeholder="输入你的 Prompt，使用 {{变量名}} 来添加变量"
@@ -716,6 +717,7 @@ import VariableInputWithFile from '@/components/VariableInputWithFile.vue'
 import ResultViewer from '@/components/ResultViewer.vue'
 import PromptComments from '@/components/PromptComments.vue'
 import PromptCodeEditor from '@/components/PromptCodeEditor.vue'
+import PromptStructureGuide from '@/components/PromptStructureGuide.vue'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()

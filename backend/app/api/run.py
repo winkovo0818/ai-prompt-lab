@@ -14,6 +14,7 @@ from ..services.openai_service import OpenAIService
 from ..services.rate_limit import rate_limiter
 from ..services.file_service import FileService
 from ..services.quota_service import QuotaService
+from ..services.pipeline_service import pipeline_service
 from ..utils.response import success_response, error_response
 from ..utils.token_counter import count_tokens, analyze_prompt_complexity
 from .prompt import check_prompt_access
@@ -200,7 +201,20 @@ async def run_prompt(
         "complexity": complexity,
         "is_cached": False  # 新执行的结果
     }
-    
+
+    # 更新 PR Pipeline 状态
+    try:
+        if request.prompt_id and prompt:
+            pipeline_service.update_pr_status_after_execution(
+                db=db,
+                prompt_id=request.prompt_id,
+                branch_id=prompt.default_branch_id or 0,
+                execution_success=True,
+                execution_result=result["output"][:200] if result.get("output") else None
+            )
+    except Exception:
+        pass
+
     return success_response(data=response_data, message="执行成功")
 
 
