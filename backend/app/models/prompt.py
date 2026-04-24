@@ -26,6 +26,7 @@ class Prompt(SQLModel, table=True):
     # 关系
     user: Optional["User"] = Relationship(back_populates="prompts")
     versions: List["PromptVersion"] = Relationship(back_populates="prompt")
+    branches: List["PromptBranch"] = Relationship(back_populates="prompt")
 
 
 class UserPromptFavorite(SQLModel, table=True):
