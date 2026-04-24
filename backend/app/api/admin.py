@@ -549,8 +549,7 @@ async def get_all_teams(
         
         # 统计成员�?        member_count = len(db.exec(
             select(TeamMember).where(
-                TeamMember.team_id == team.id,
-                TeamMember.status == "active"
+                TeamMember.team_id == team.id
             )
         ).all())
         
