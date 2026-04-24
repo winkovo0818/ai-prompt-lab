@@ -1,7 +1,7 @@
 """Prompt Commit Model"""
 from typing import Optional
 from datetime import datetime
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, JSON
 
 
 class PromptCommit(SQLModel, table=True):
@@ -13,7 +13,7 @@ class PromptCommit(SQLModel, table=True):
     parent_id: Optional[int] = Field(default=None, foreign_key="prompt_commit.id")
     title: str = Field(max_length=255, nullable=False)
     content: str = Field(nullable=False)
-    variables_schema: Optional[dict] = Field(default=None)
+    variables_schema: Optional[dict] = Field(default=None, sa_type=JSON)
     created_by: int = Field(foreign_key="user.id", nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

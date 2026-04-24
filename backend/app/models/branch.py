@@ -21,15 +21,9 @@ class PromptBranch(SQLModel, table=True):
 
     # Relationships
     prompt: "Prompt" = Relationship(back_populates="branches")
-    commits: list["PromptCommit"] = Relationship(back_populates="branch", cascade_delete=True)
-    source_prs: list["PromptPullRequest"] = Relationship(
-        back_populates="source_branch",
-        foreign_keys="PromptPullRequest.source_branch_id"
-    )
-    target_prs: list["PromptPullRequest"] = Relationship(
-        back_populates="target_branch",
-        foreign_keys="PromptPullRequest.target_branch_id"
-    )
+    commits: list["PromptCommit"] = Relationship(back_populates="branch")
+    source_prs: list["PromptPullRequest"] = Relationship(back_populates="source_branch")
+    target_prs: list["PromptPullRequest"] = Relationship(back_populates="target_branch")
 
 
 from app.models.prompt import Prompt
