@@ -13,7 +13,8 @@
       "Bash(python -c \"from app.api import branch\")",
       "Bash(python -c \"import sys; sys.path.insert\\(0, '.'\\); from app.models.branch import PromptBranch; print\\('OK'\\)\")",
       "PowerShell(python --version)",
-      "Bash(/c/Users/GOC/AppData/Local/Microsoft/WindowsApps/python -c \"print\\('hello'\\)\")"
+      "Bash(/c/Users/GOC/AppData/Local/Microsoft/WindowsApps/python -c \"print\\('hello'\\)\")",
+      "Bash(python -c \"from app.core.config import settings; print\\('OK'\\)\")"
     ]
   }
 }

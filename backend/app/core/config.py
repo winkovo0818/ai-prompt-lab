@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7天
 
+    # 加密配置
+    ENCRYPTION_MASTER_KEY: Optional[str] = None
+    ENCRYPTION_SALT: Optional[str] = None
+
     # CORS 配置
     CORS_ORIGINS: Union[List[str], str] = "http://localhost:5173,http://localhost:3000"
 
