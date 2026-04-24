@@ -75,13 +75,13 @@ app.include_router(pull_request.router)
 async def on_startup():
     """应用启动时执行"""
     # 数据库初始化（如果启动时卡住，注释掉这行并手动运行 init_db.py）
-    try:
-        create_db_and_tables()
-        print("[OK] 数据库表初始化成功")
-    except Exception as e:
-        print(f"[WARNING] 数据库初始化失败: {e}")
-        print("   请检查数据库配置或手动运行 python init_db.py")
-    
+    # try:
+    #     create_db_and_tables()
+    #     print("[OK] 数据库表初始化成功")
+    # except Exception as e:
+    #     print(f"[WARNING] 数据库初始化失败: {e}")
+    #     print("   请检查数据库配置或手动运行 python init_db.py")
+
     print(f"[SUCCESS] {settings.APP_NAME} 启动成功!")
     print(f"[INFO] API 文档: http://localhost:8000/docs")
 
