@@ -22,16 +22,31 @@
             </div>
 
             <div class="flex items-center space-x-2">
-              <el-button 
-                v-if="isEditMode" 
-                @click="showExecutionHistory" 
+              <el-button
+                v-if="isEditMode"
+                @click="showExecutionHistory"
                 icon="List"
               >
                 执行历史
               </el-button>
-              <el-button 
-                v-if="isEditMode" 
-                @click="showVersionHistory" 
+              <el-button
+                v-if="isEditMode"
+                @click="goToRepo"
+                icon="Connection"
+              >
+                Git 仓库
+              </el-button>
+              <el-button
+                v-if="isEditMode"
+                @click="handleCompareWithPrevious"
+                icon="Discount"
+                :disabled="!canCompare"
+              >
+                对比版本
+              </el-button>
+              <el-button
+                v-if="isEditMode"
+                @click="showVersionHistory"
                 icon="Clock"
               >
                 版本历史
@@ -762,6 +777,22 @@ const multiModelDialogVisible = ref(false)
 const selectedModels = ref<string[]>([])
 const multiModelRunning = ref(false)
 const multiModelResults = ref<any[]>([])
+
+// Git 版本对比相关
+const canCompare = computed(() => versions.value.length >= 2)
+
+// Git 仓库页面
+function goToRepo() {
+  if (isEditMode.value) {
+    router.push(`/repo/${route.params.id}`)
+  }
+}
+
+// 与上一版本对比
+function handleCompareWithPrevious() {
+  if (!canCompare.value) return
+  router.push(`/repo/${route.params.id}?compare=true`)
+}
 
 // 获取当前Prompt的缓存key
 const getCacheKey = () => {
