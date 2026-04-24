@@ -38,23 +38,20 @@ class Team(SQLModel, table=True):
 class TeamMember(SQLModel, table=True):
     """团队成员模型"""
     __tablename__ = "team_members"
-    
+
     id: Optional[int] = Field(default=None, primary_key=True)
     team_id: int = Field(foreign_key="teams.id", index=True)
     user_id: int = Field(foreign_key="users.id", index=True)
-    
+
     # 成员角色
-    role: str = Field(default="viewer", max_length=20)  # owner, editor, viewer
-    
+    role: str = Field(default="member", max_length=20)  # owner/admin/member
+    permission: str = Field(default="read", max_length=20)  # read/write/admin
+
     # 邀请信息
     invited_by: Optional[int] = Field(default=None, foreign_key="users.id")
-    invited_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    # 加入状态
-    status: str = Field(default="active", max_length=20)  # pending, active, removed
-    joined_at: Optional[datetime] = Field(default=None)
-    
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # 加入时间
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class TeamPrompt(SQLModel, table=True):
