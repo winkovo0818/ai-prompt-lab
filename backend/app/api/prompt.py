@@ -43,8 +43,7 @@ def check_prompt_access(prompt_id: int, current_user: User, db: Session, require
     if prompt.user_id != current_user.id and not prompt.is_public:
         user_teams = db.exec(
             select(TeamMember).where(
-                TeamMember.user_id == current_user.id,
-                TeamMember.status == "active"
+                TeamMember.user_id == current_user.id
             )
         ).all()
 
@@ -153,8 +152,7 @@ async def get_prompt_list(
         # 获取用户加入的团队
         user_teams = db.exec(
             select(TeamMember).where(
-                TeamMember.user_id == current_user.id,
-                TeamMember.status == "active"
+                TeamMember.user_id == current_user.id
             )
         ).all()
         
@@ -299,8 +297,7 @@ async def get_prompt_detail(
         from ..models.team import Team
         user_teams = db.exec(
             select(TeamMember).where(
-                TeamMember.user_id == current_user.id,
-                TeamMember.status == "active"
+                TeamMember.user_id == current_user.id
             )
         ).all()
         
