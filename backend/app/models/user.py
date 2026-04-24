@@ -6,12 +6,11 @@ from sqlmodel import SQLModel, Field, Relationship
 class User(SQLModel, table=True):
     """用户模型"""
     __tablename__ = "users"
-    
+
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True, max_length=50)
     email: str = Field(index=True, unique=True, max_length=100)
     hashed_password: str = Field(max_length=255)
-    api_key: Optional[str] = Field(default=None, max_length=255)
     role: str = Field(default="user", max_length=20)  # user 或 admin
     
     # 扩展个人资料字段
