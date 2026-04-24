@@ -13,6 +13,7 @@ from ..services.evaluation_service import EvaluationService
 from ..services.rate_limit import rate_limiter
 from ..utils.response import success_response, error_response
 from .run import replace_variables
+from .prompt import check_prompt_access
 
 router = APIRouter(prefix="/api/abtest", tags=["A/B测试"])
 
@@ -37,17 +38,10 @@ async def create_abtest(
     if len(test_data.prompt_ids) > 5:
         return error_response(code=4002, message="最多支持5个 Prompt 对比")
     
-    # 加载所有 Prompts
+    # 加载所有 Prompts - 统一权限检查
     prompts = []
     for prompt_id in test_data.prompt_ids:
-        prompt = db.get(Prompt, prompt_id)
-        if not prompt:
-            return error_response(code=2001, message=f"Prompt {prompt_id} 不存在")
-        
-        # 权限检查
-        if prompt.user_id != current_user.id and not prompt.is_public:
-            return error_response(code=2002, message=f"无权访问 Prompt {prompt_id}")
-        
+        prompt, _ = check_prompt_access(prompt_id, current_user, db)
         prompts.append(prompt)
     
     # 执行测试 - 优化：合并为一次调用

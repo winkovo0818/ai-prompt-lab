@@ -103,31 +103,34 @@ class OpenAIService:
                 messages.append({"role": "system", "content": system_prompt})
             
             messages.append({"role": "user", "content": prompt})
-            
+
+            # 优先使用用户指定的模型，否则使用配置中的模型
+            actual_model = model if model else ai_config.model
+
             completion = await client.chat.completions.create(
-                model=ai_config.model,  # 使用配置中的模型
+                model=actual_model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            
+
             response_time = time.time() - start_time
-            
+
             # 提取响应内容
             output_text = completion.choices[0].message.content or ""
-            
+
             # 获取 token 使用情况
             input_tokens = completion.usage.prompt_tokens if completion.usage else count_tokens(prompt)
             output_tokens = completion.usage.completion_tokens if completion.usage else count_tokens(output_text)
             total_tokens = completion.usage.total_tokens if completion.usage else (input_tokens + output_tokens)
-            
+
             # 估算成本
-            cost = estimate_cost(input_tokens, output_tokens, ai_config.model)
-            
+            cost = estimate_cost(input_tokens, output_tokens, actual_model)
+
             return {
                 "output": output_text,
                 "content": output_text,  # 兼容字段
-                "model": ai_config.model,
+                "model": actual_model,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "total_tokens": total_tokens,

@@ -16,6 +16,7 @@ from ..services.file_service import FileService
 from ..services.quota_service import QuotaService
 from ..utils.response import success_response, error_response
 from ..utils.token_counter import count_tokens, analyze_prompt_complexity
+from .prompt import check_prompt_access
 
 router = APIRouter(prefix="/api/run", tags=["执行Prompt"])
 
@@ -68,15 +69,8 @@ async def run_prompt(
     prompt_title = "临时 Prompt"
     
     if request.prompt_id:
-        # 从数据库加载
-        prompt = db.get(Prompt, request.prompt_id)
-        if not prompt:
-            return error_response(code=2001, message="Prompt 不存在")
-        
-        # 权限检查
-        if prompt.user_id != current_user.id and not prompt.is_public:
-            return error_response(code=2002, message="无权访问该 Prompt")
-        
+        # 统一权限检查
+        prompt, _ = check_prompt_access(request.prompt_id, current_user, db)
         prompt_content = prompt.content
         prompt_title = prompt.title
     

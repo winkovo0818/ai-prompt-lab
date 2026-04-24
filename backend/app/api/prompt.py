@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, or_
@@ -6,7 +6,7 @@ from ..core.database import get_session
 from ..core.deps import get_current_active_user
 from ..models.user import User
 from ..models.prompt import (
-    Prompt, PromptCreate, PromptUpdate, 
+    Prompt, PromptCreate, PromptUpdate,
     PromptResponse, PromptListItem, UserPromptFavorite
 )
 from ..models.prompt_version import PromptVersion, PromptVersionResponse
@@ -14,6 +14,68 @@ from ..models.team import TeamPrompt, TeamMember
 from ..utils.response import success_response, error_response
 
 router = APIRouter(prefix="/api/prompt", tags=["Prompt管理"])
+
+
+def check_prompt_access(prompt_id: int, current_user: User, db: Session, require_edit: bool = False) -> Tuple[Prompt, Optional[dict]]:
+    """
+    检查用户是否有权访问指定 Prompt（可复用的权限检查函数）
+
+    Args:
+        prompt_id: Prompt ID
+        current_user: 当前用户
+        db: 数据库会话
+        require_edit: 是否需要编辑权限
+
+    Returns:
+        (prompt, team_info) - prompt 对象和团队信息（有的话）
+
+    Raises:
+        HTTPException - 无权访问时抛出
+    """
+    prompt = db.get(Prompt, prompt_id)
+    if not prompt:
+        raise HTTPException(status_code=404, detail="Prompt 不存在")
+
+    team_permission = None
+    team_info = None
+
+    # 检查访问权限：所有者、公开、或团队共享
+    if prompt.user_id != current_user.id and not prompt.is_public:
+        user_teams = db.exec(
+            select(TeamMember).where(
+                TeamMember.user_id == current_user.id,
+                TeamMember.status == "active"
+            )
+        ).all()
+
+        team_ids = [tm.team_id for tm in user_teams]
+
+        if team_ids:
+            team_prompt = db.exec(
+                select(TeamPrompt).where(
+                    TeamPrompt.prompt_id == prompt_id,
+                    TeamPrompt.team_id.in_(team_ids)
+                )
+            ).first()
+
+            if team_prompt:
+                team_permission = team_prompt.permission
+                team = db.get(Team, team_prompt.team_id)
+                team_info = {
+                    "team_id": team_prompt.team_id,
+                    "team_name": team.name if team else None,
+                    "permission": team_prompt.permission
+                }
+
+        if not team_permission:
+            raise HTTPException(status_code=403, detail="无权访问该 Prompt")
+
+    # 如果需要编辑权限
+    if require_edit and prompt.user_id != current_user.id and team_permission != "edit":
+        if not (current_user.role == "admin"):
+            raise HTTPException(status_code=403, detail="无权编辑该 Prompt")
+
+    return prompt, team_info
 
 
 @router.post("", response_model=dict)
