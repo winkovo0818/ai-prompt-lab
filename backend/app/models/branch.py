@@ -10,7 +10,7 @@ class PromptBranch(SQLModel, table=True):
     __tablename__ = "prompt_branch"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    prompt_id: int = Field(foreign_key="prompt.id", nullable=False, index=True)
+    prompt_id: int = Field(foreign_key="prompts.id", nullable=False, index=True)
     name: str = Field(max_length=100, nullable=False)
     description: Optional[str] = Field(default=None)
     base_branch_id: Optional[int] = Field(default=None, foreign_key="prompt_branch.id")
