@@ -11,25 +11,13 @@ class User(SQLModel, table=True):
     username: str = Field(index=True, unique=True, max_length=50)
     email: str = Field(index=True, unique=True, max_length=100)
     hashed_password: str = Field(max_length=255)
-    role: str = Field(default="user", max_length=20)  # user 或 admin
-    
-    # 扩展个人资料字段
-    nickname: Optional[str] = Field(default=None, max_length=100)
-    phone: Optional[str] = Field(default=None, max_length=20, index=True)
+    full_name: Optional[str] = Field(default=None, max_length=100)
     avatar_url: Optional[str] = Field(default=None, max_length=500)
-    bio: Optional[str] = Field(default=None)
-    company: Optional[str] = Field(default=None, max_length=100)
-    location: Optional[str] = Field(default=None, max_length=100)
-    website: Optional[str] = Field(default=None, max_length=200)
-    
-    # 登录信息
-    last_login_at: Optional[datetime] = Field(default=None, index=True)
-    login_count: int = Field(default=0)
-    
+    role: str = Field(default="user", max_length=20)  # user 或 admin
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # 关系
     prompts: List["Prompt"] = Relationship(back_populates="user")
 
@@ -52,17 +40,9 @@ class UserResponse(SQLModel):
     id: int
     username: str
     email: str
-    # api_key 已移除 - 不再暴露用户 API Key
-    role: str = "user"
-    nickname: Optional[str] = None
-    phone: Optional[str] = None
+    full_name: Optional[str] = None
     avatar_url: Optional[str] = None
-    bio: Optional[str] = None
-    company: Optional[str] = None
-    location: Optional[str] = None
-    website: Optional[str] = None
-    last_login_at: Optional[datetime] = None
-    login_count: int = 0
+    role: str = "user"
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -81,12 +61,7 @@ class UserProfileUpdate(SQLModel):
     """用户个人资料更新模型"""
     email: Optional[str] = Field(default=None, max_length=100)
     password: Optional[str] = Field(default=None, min_length=6, max_length=50)
-    nickname: Optional[str] = Field(default=None, max_length=100)
-    phone: Optional[str] = Field(default=None, max_length=20)
-    bio: Optional[str] = None
-    company: Optional[str] = Field(default=None, max_length=100)
-    location: Optional[str] = Field(default=None, max_length=100)
-    website: Optional[str] = Field(default=None, max_length=200)
+    full_name: Optional[str] = Field(default=None, max_length=100)
 
 
 class Token(SQLModel):
@@ -94,4 +69,3 @@ class Token(SQLModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
-
