@@ -10,11 +10,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 from app.core.database import create_db_and_tables
-from app.models.user import User
-from app.models.prompt import Prompt
-from app.models.prompt_version import PromptVersion
-from app.models.abtest import ABTestResult
-from app.models.ai_config import AIConfig
 
 
 def init_database():

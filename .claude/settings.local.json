@@ -5,7 +5,15 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(npm install *)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(pip install *)",
+      "Bash(pip show *)",
+      "Bash(alembic init *)",
+      "Bash(python -c \"from app.main import app; print\\('OK'\\)\")",
+      "Bash(python -c \"from app.api import branch\")",
+      "Bash(python -c \"import sys; sys.path.insert\\(0, '.'\\); from app.models.branch import PromptBranch; print\\('OK'\\)\")",
+      "PowerShell(python --version)",
+      "Bash(/c/Users/GOC/AppData/Local/Microsoft/WindowsApps/python -c \"print\\('hello'\\)\")"
     ]
   }
 }

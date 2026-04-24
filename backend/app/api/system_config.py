@@ -250,7 +250,8 @@ async def test_global_ai_config(
             detail=f"无法连接到 API 服务器，请检查 Base URL 是否正确。错误: {str(e)}"
         )
     except Exception as e:
-        
+        error_msg = str(e)
+
         # 提供更友好的错误提示
         if "api_key" in error_msg.lower() or "authentication" in error_msg.lower():
             detail = f"API Key 验证失败，请检查 API Key 是否正确。错误: {error_msg}"
@@ -258,6 +259,6 @@ async def test_global_ai_config(
             detail = f"模型不存在或不可用，请检查模型名称是否正确。错误: {error_msg}"
         else:
             detail = f"测试失败: {error_msg}"
-        
+
         raise HTTPException(status_code=500, detail=detail)
 

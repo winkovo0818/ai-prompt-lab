@@ -352,19 +352,46 @@ async function loadComments() {
 
 // 处理输入（检测@）
 async function handleInput(value: string) {
-  const input = commentInputRef.value?.$el?.querySelector('textarea') || 
+  // 如果正在回复，使用回复输入框的逻辑
+  if (replyingTo.value) {
+    await handleReplyInput(value)
+    return
+  }
+
+  const input = commentInputRef.value?.$el?.querySelector('textarea') ||
                 document.activeElement as HTMLTextAreaElement
   if (!input) return
-  
+
   const cursorPos = input.selectionStart
   const textBefore = value.substring(0, cursorPos)
   const atMatch = textBefore.match(/@(\w*)$/)
-  
+
   if (atMatch) {
     mentionStart.value = cursorPos - atMatch[1].length
     const keyword = atMatch[1]
     try {
       // 传递 promptId 来搜索团队成员，空关键词也搜索
+      const res = await commentAPI.searchUsers(keyword || '', props.promptId) as any
+      mentionUsers.value = res.data || []
+      showMentionList.value = mentionUsers.value.length > 0
+      mentionIndex.value = 0
+    } catch (e) {
+      mentionUsers.value = []
+      showMentionList.value = false
+    }
+  } else {
+    showMentionList.value = false
+  }
+}
+
+// 处理回复输入（检测@）
+async function handleReplyInput(value: string) {
+  // 回复模式下只做简单 @ 检测
+  const atMatch = value.match(/@(\w*)$/)
+
+  if (atMatch) {
+    const keyword = atMatch[1]
+    try {
       const res = await commentAPI.searchUsers(keyword || '', props.promptId) as any
       mentionUsers.value = res.data || []
       showMentionList.value = mentionUsers.value.length > 0
@@ -398,14 +425,23 @@ function handleKeydown(e: KeyboardEvent) {
 
 // 选择提及用户
 function selectMention(user: CommentUser) {
-  const before = newComment.value.substring(0, mentionStart.value - 1)
-  const after = newComment.value.substring(mentionStart.value + (newComment.value.substring(mentionStart.value).match(/^\w*/)?.[0]?.length || 0))
-  newComment.value = `${before}@${user.username} ${after}`
-  
-  if (!mentionedUserIds.value.includes(user.id)) {
-    mentionedUserIds.value.push(user.id)
+  // 根据当前模式选择目标输入框
+  const isReplyMode = replyingTo.value !== null
+  const targetValue = isReplyMode ? replyContent.value : newComment.value
+
+  const before = targetValue.substring(0, mentionStart.value - 1)
+  const after = targetValue.substring(mentionStart.value + (targetValue.substring(mentionStart.value).match(/^\w*/)?.[0]?.length || 0))
+  const newValue = `${before}@${user.username} ${after}`
+
+  if (isReplyMode) {
+    replyContent.value = newValue
+  } else {
+    newComment.value = newValue
+    if (!mentionedUserIds.value.includes(user.id)) {
+      mentionedUserIds.value.push(user.id)
+    }
   }
-  
+
   showMentionList.value = false
 }
 

@@ -183,7 +183,7 @@ cd backend
 mysql -u root -p prompt_lab < init_database.sql
 
 # 4. 配置环境变量
-cp env_example.txt .env
+cp .env .env
 # 编辑 .env 文件，设置数据库连接、密钥和 CORS
 # DATABASE_URL=mysql+pymysql://root:password@localhost:3306/prompt_lab
 

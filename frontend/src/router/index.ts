@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/repo/:id',
+    name: 'PromptRepo',
+    component: () => import('@/pages/PromptRepo.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/compare',
     name: 'CompareTest',
     component: () => import('@/pages/CompareTest.vue'),
