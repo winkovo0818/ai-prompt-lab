@@ -163,7 +163,6 @@ class TeamMemberResponse(SQLModel):
     email: str
     avatar_url: Optional[str] = None
     role: str
-    status: str
     joined_at: Optional[datetime] = None
     invited_by_username: Optional[str] = None
 

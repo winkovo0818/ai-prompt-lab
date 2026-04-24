@@ -562,8 +562,7 @@ async def get_all_teams(
         # 统计成员数
         member_count = len(db.exec(
             select(TeamMember).where(
-                TeamMember.team_id == team.id,
-                TeamMember.status == "active"
+                TeamMember.team_id == team.id
             )
         ).all())
         
@@ -621,7 +620,6 @@ async def get_team_detail_admin(
                 "username": user.username,
                 "email": user.email,
                 "role": m.role,
-                "status": m.status,
                 "joined_at": m.joined_at.isoformat() if m.joined_at else None
             })
     

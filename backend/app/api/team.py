@@ -1,5 +1,5 @@
 """
-团队工作�?API
+团队工作?API
 支持团队管理、成员管理、Prompt 共享
 """
 import secrets
@@ -19,7 +19,7 @@ from ..models.team import (
     TeamResponse, TeamMemberResponse, TeamPromptResponse
 )
 
-router = APIRouter(prefix="/api/team", tags=["团队工作�?])
+router = APIRouter(prefix="/api/team", tags=["团队工作?"])
 
 
 # ==================== 团队管理 ====================
@@ -36,30 +36,32 @@ async def get_my_teams(
             TeamMember.user_id == current_user.id
         )
     ).all()
-    
+
     owned_teams = db.exec(
         select(Team.id).where(Team.owner_id == current_user.id)
     ).all()
-    
+
     team_ids = list(set(member_teams + owned_teams))
-    
+
     if not team_ids:
         return {"code": 0, "data": []}
-    
+
     teams = db.exec(select(Team).where(Team.id.in_(team_ids))).all()
-    
+
     result = []
     for team in teams:
-        # 统计成员�?        member_count = db.exec(
+        # 统计成员?
+        member_count = db.exec(
             select(func.count(TeamMember.id)).where(
                 TeamMember.team_id == team.id
             )
         ).first() or 0
-        
-        # 统计 Prompt �?        prompt_count = db.exec(
+
+        # 统计 Prompt ?
+        prompt_count = db.exec(
             select(func.count(TeamPrompt.id)).where(TeamPrompt.team_id == team.id)
         ).first() or 0
-        
+
         # 获取我的角色
         my_role = "owner" if team.owner_id == current_user.id else None
         if not my_role:
@@ -71,7 +73,7 @@ async def get_my_teams(
             ).first()
             if member:
                 my_role = member.role
-        
+
         result.append(TeamResponse(
             id=team.id,
             name=team.name,
@@ -86,7 +88,7 @@ async def get_my_teams(
             created_at=team.created_at,
             updated_at=team.updated_at
         ).model_dump())
-    
+
     return {"code": 0, "data": result}
 
 
@@ -105,12 +107,13 @@ async def create_team(
         is_public=data.is_public,
         allow_member_invite=data.allow_member_invite
     )
-    
+
     db.add(team)
     db.commit()
     db.refresh(team)
-    
-    # 自动将创建者添加为成员（owner角色�?    member = TeamMember(
+
+    # 自动将创建者添加为成员（owner角色?
+    member = TeamMember(
         team_id=team.id,
         user_id=current_user.id,
         role="owner",
@@ -118,7 +121,7 @@ async def create_team(
     )
     db.add(member)
     db.commit()
-    
+
     return {
         "code": 0,
         "data": {"id": team.id, "name": team.name},
@@ -135,24 +138,25 @@ async def get_team(
     """获取团队详情"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
-    # 检查权�?    if not _can_view_team(team, current_user, db):
+        raise HTTPException(status_code=404, detail="团队不存?")
+
+    # 检查权?
+    if not _can_view_team(team, current_user, db):
         raise HTTPException(status_code=403, detail="无权限查看此团队")
-    
+
     # 统计
     member_count = db.exec(
         select(func.count(TeamMember.id)).where(
             TeamMember.team_id == team.id
         )
     ).first() or 0
-    
+
     prompt_count = db.exec(
         select(func.count(TeamPrompt.id)).where(TeamPrompt.team_id == team.id)
     ).first() or 0
-    
+
     my_role = _get_user_role(team, current_user, db)
-    
+
     return {
         "code": 0,
         "data": TeamResponse(
@@ -182,11 +186,12 @@ async def update_team(
     """更新团队"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
-    # 只有所有者可以更�?    if team.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="只有团队所有者可以修改设�?)
-    
+        raise HTTPException(status_code=404, detail="团队不存?")
+
+    # 只有所有者可以更?
+    if team.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="只有团队所有者可以修改设?")
+
     if data.name is not None:
         team.name = data.name
     if data.description is not None:
@@ -197,12 +202,12 @@ async def update_team(
         team.is_public = data.is_public
     if data.allow_member_invite is not None:
         team.allow_member_invite = data.allow_member_invite
-    
+
     team.updated_at = datetime.utcnow()
-    
+
     db.add(team)
     db.commit()
-    
+
     return {"code": 0, "message": "更新成功"}
 
 
@@ -215,26 +220,26 @@ async def delete_team(
     """删除团队"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
+        raise HTTPException(status_code=404, detail="团队不存?")
+
     if team.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="只有团队所有者可以删除团�?)
-    
+        raise HTTPException(status_code=403, detail="只有团队所有者可以删除团?")
+
     # 删除相关数据
     db.exec(select(TeamMember).where(TeamMember.team_id == team_id))
     for m in db.exec(select(TeamMember).where(TeamMember.team_id == team_id)).all():
         db.delete(m)
-    
+
     for p in db.exec(select(TeamPrompt).where(TeamPrompt.team_id == team_id)).all():
         db.delete(p)
-    
+
     for i in db.exec(select(TeamInvite).where(TeamInvite.team_id == team_id)).all():
         db.delete(i)
-    
+
     db.delete(team)
     db.commit()
-    
-    return {"code": 0, "message": "团队已删�?}
+
+    return {"code": 0, "message": "团队已删?"}
 
 
 # ==================== 成员管理 ====================
@@ -248,27 +253,27 @@ async def get_team_members(
     """获取团队成员列表"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
+        raise HTTPException(status_code=404, detail="团队不存?")
+
     if not _can_view_team(team, current_user, db):
-        raise HTTPException(status_code=403, detail="无权限查�?)
-    
+        raise HTTPException(status_code=403, detail="无权限查?")
+
     members = db.exec(
         select(TeamMember).where(TeamMember.team_id == team_id)
     ).all()
-    
+
     result = []
     for member in members:
         user = db.get(User, member.user_id)
         if not user:
             continue
-        
+
         invited_by_username = None
         if member.invited_by:
             inviter = db.get(User, member.invited_by)
             if inviter:
                 invited_by_username = inviter.username
-        
+
         result.append(TeamMemberResponse(
             id=member.id,
             team_id=member.team_id,
@@ -277,11 +282,10 @@ async def get_team_members(
             email=user.email,
             avatar_url=user.avatar_url,
             role=member.role,
-            status=member.status,
             joined_at=member.joined_at,
             invited_by_username=invited_by_username
         ).model_dump())
-    
+
     return {"code": 0, "data": result}
 
 
@@ -295,17 +299,18 @@ async def add_team_member(
     """添加团队成员"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
-    # 检查权�?    my_role = _get_user_role(team, current_user, db)
+        raise HTTPException(status_code=404, detail="团队不存?")
+
+    # 检查权?
+    my_role = _get_user_role(team, current_user, db)
     if my_role not in ["owner", "editor"]:
         if not (team.allow_member_invite and my_role == "viewer"):
-            raise HTTPException(status_code=403, detail="无权限添加成�?)
-    
+            raise HTTPException(status_code=403, detail="无权限添加成?")
+
     # 不能添加比自己更高的角色
     if data.role == "owner" and my_role != "owner":
         raise HTTPException(status_code=403, detail="无权限设置此角色")
-    
+
     # 查找用户
     target_user = None
     if data.user_id:
@@ -314,36 +319,31 @@ async def add_team_member(
         target_user = db.exec(
             select(User).where(User.email == data.email)
         ).first()
-    
+
     if not target_user:
-        raise HTTPException(status_code=404, detail="用户不存�?)
-    
-    # 检查是否已是成�?    existing = db.exec(
+        raise HTTPException(status_code=404, detail="用户不存?")
+
+    # 检查是否已是成?
+    existing = db.exec(
         select(TeamMember).where(
             TeamMember.team_id == team_id,
             TeamMember.user_id == target_user.id
         )
     ).first()
-    
+
     if existing:
-        if existing.status == "active":
-            raise HTTPException(status_code=400, detail="用户已是团队成员")
-        # 重新激�?        existing.status = "active"
-        existing.role = data.role
-        existing.joined_at = datetime.utcnow()
-        db.add(existing)
-        db.commit()
-    else:
-        member = TeamMember(
-            team_id=team_id,
-            user_id=target_user.id,
-            role=data.role,
-            invited_by=current_user.id,
-            joined_at=datetime.utcnow()
-        )
-        db.add(member)
-        db.commit()
-    
+        raise HTTPException(status_code=400, detail="用户已是团队成员")
+
+    member = TeamMember(
+        team_id=team_id,
+        user_id=target_user.id,
+        role=data.role,
+        invited_by=current_user.id,
+        joined_at=datetime.utcnow()
+    )
+    db.add(member)
+    db.commit()
+
     return {"code": 0, "message": "成员添加成功"}
 
 
@@ -358,23 +358,24 @@ async def update_team_member(
     """更新成员角色"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
+        raise HTTPException(status_code=404, detail="成员不存?")
+
     member = db.get(TeamMember, member_id)
     if not member or member.team_id != team_id:
-        raise HTTPException(status_code=404, detail="成员不存�?)
-    
+        raise HTTPException(status_code=404, detail="成员不存?")
+
     my_role = _get_user_role(team, current_user, db)
     if my_role != "owner":
-        raise HTTPException(status_code=403, detail="只有所有者可以修改角�?)
-    
-    # 不能修改自己的角�?    if member.user_id == current_user.id:
-        raise HTTPException(status_code=400, detail="不能修改自己的角�?)
-    
+        raise HTTPException(status_code=403, detail="只有所有者可以修改角?")
+
+    # 不能修改自己的角?
+    if member.user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="不能修改自己的角?")
+
     member.role = data.role
     db.add(member)
     db.commit()
-    
+
     return {"code": 0, "message": "角色更新成功"}
 
 
@@ -388,25 +389,26 @@ async def remove_team_member(
     """移除成员"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
+        raise HTTPException(status_code=404, detail="团队不存?")
+
     member = db.get(TeamMember, member_id)
     if not member or member.team_id != team_id:
-        raise HTTPException(status_code=404, detail="成员不存�?)
-    
+        raise HTTPException(status_code=404, detail="成员不存?")
+
     my_role = _get_user_role(team, current_user, db)
-    
-    # 所有者可以移除任何人，成员可以自己退�?    if my_role != "owner" and member.user_id != current_user.id:
+
+    # 所有者可以移除任何人，成员可以自己退?
+    if my_role != "owner" and member.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权限移除此成员")
-    
-    # 所有者不能移除自�?    if member.user_id == team.owner_id:
-        raise HTTPException(status_code=400, detail="所有者不能退出团�?)
-    
-    member.status = "removed"
-    db.add(member)
+
+    # 所有者不能移除自?
+    if member.user_id == team.owner_id:
+        raise HTTPException(status_code=400, detail="所有者不能退出团?")
+
+    db.delete(member)
     db.commit()
-    
-    return {"code": 0, "message": "成员已移�?}
+
+    return {"code": 0, "message": "成员已移?"}
 
 
 # ==================== 团队 Prompt 管理 ====================
@@ -422,26 +424,26 @@ async def get_team_prompts(
     """获取团队 Prompt 列表"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
+        raise HTTPException(status_code=404, detail="团队不存?")
+
     if not _can_view_team(team, current_user, db):
-        raise HTTPException(status_code=403, detail="无权限查�?)
-    
+        raise HTTPException(status_code=403, detail="无权限查?")
+
     # 查询团队 Prompt
     statement = select(TeamPrompt).where(
         TeamPrompt.team_id == team_id
     ).offset(skip).limit(limit)
-    
+
     team_prompts = db.exec(statement).all()
-    
+
     result = []
     for tp in team_prompts:
         prompt = db.get(Prompt, tp.prompt_id)
         if not prompt:
             continue
-        
+
         sharer = db.get(User, tp.shared_by)
-        
+
         result.append(TeamPromptResponse(
             id=tp.id,
             team_id=tp.team_id,
@@ -452,12 +454,12 @@ async def get_team_prompts(
             shared_by_username=sharer.username if sharer else "Unknown",
             created_at=tp.created_at
         ).model_dump())
-    
+
     # 统计总数
     total = db.exec(
         select(func.count(TeamPrompt.id)).where(TeamPrompt.team_id == team_id)
     ).first() or 0
-    
+
     return {
         "code": 0,
         "data": {
@@ -474,23 +476,24 @@ async def share_prompt_to_team(
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user)
 ):
-    """共享 Prompt 到团�?""
+    """共享 Prompt 到团?"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
+        raise HTTPException(status_code=404, detail="Prompt 不存?")
+
     # 检查权限（需要是编辑者或所有者）
     my_role = _get_user_role(team, current_user, db)
     if my_role not in ["owner", "editor"]:
-        raise HTTPException(status_code=403, detail="无权限共�?Prompt")
-    
-    # 检�?Prompt 是否存在且属于当前用�?    prompt = db.get(Prompt, data.prompt_id)
+        raise HTTPException(status_code=403, detail="无权限共?Prompt")
+
+    # 检?Prompt 是否存在且属于当前用?
+    prompt = db.get(Prompt, data.prompt_id)
     if not prompt:
-        raise HTTPException(status_code=404, detail="Prompt 不存�?)
-    
+        raise HTTPException(status_code=404, detail="Prompt 不存?")
+
     if prompt.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="只能共享自己�?Prompt")
-    
+        raise HTTPException(status_code=403, detail="只能共享自己?Prompt")
+
     # 检查是否已共享
     existing = db.exec(
         select(TeamPrompt).where(
@@ -498,23 +501,23 @@ async def share_prompt_to_team(
             TeamPrompt.prompt_id == data.prompt_id
         )
     ).first()
-    
+
     if existing:
         existing.permission = data.permission
         db.add(existing)
         db.commit()
-        return {"code": 0, "message": "共享权限已更�?}
-    
+        return {"code": 0, "message": "共享权限已更?"}
+
     team_prompt = TeamPrompt(
         team_id=team_id,
         prompt_id=data.prompt_id,
         shared_by=current_user.id,
         permission=data.permission
     )
-    
+
     db.add(team_prompt)
     db.commit()
-    
+
     return {"code": 0, "message": "Prompt 已共享到团队"}
 
 
@@ -525,27 +528,28 @@ async def remove_prompt_from_team(
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user)
 ):
-    """从团队移�?Prompt"""
+    """从团队移?Prompt"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
+        raise HTTPException(status_code=404, detail="团队不存?")
+
     team_prompt = db.get(TeamPrompt, team_prompt_id)
     if not team_prompt or team_prompt.team_id != team_id:
-        raise HTTPException(status_code=404, detail="团队 Prompt 不存�?)
-    
+        raise HTTPException(status_code=404, detail="团队 Prompt 不存?")
+
     my_role = _get_user_role(team, current_user, db)
-    
-    # 所有者、编辑者、或分享者可以移�?    if my_role not in ["owner", "editor"] and team_prompt.shared_by != current_user.id:
-        raise HTTPException(status_code=403, detail="无权限移�?)
-    
+
+    # 所有者、编辑者、或分享者可以移?
+    if my_role not in ["owner", "editor"] and team_prompt.shared_by != current_user.id:
+        raise HTTPException(status_code=403, detail="无权限移?")
+
     db.delete(team_prompt)
     db.commit()
-    
+
     return {"code": 0, "message": "已从团队移除"}
 
 
-# ==================== 邀请链�?====================
+# ==================== 邀请链?====================
 
 @router.post("/{team_id}/invites")
 async def create_invite_link(
@@ -554,23 +558,23 @@ async def create_invite_link(
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user)
 ):
-    """创建邀请链�?""
+    """创建邀请链?"""
     team = db.get(Team, team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
+        raise HTTPException(status_code=404, detail="团队不存?")
+
     my_role = _get_user_role(team, current_user, db)
     if my_role not in ["owner", "editor"]:
         if not (team.allow_member_invite and my_role == "viewer"):
-            raise HTTPException(status_code=403, detail="无权限创建邀�?)
-    
+            raise HTTPException(status_code=403, detail="无权限创建邀?")
+
     # 生成邀请码
     invite_code = secrets.token_urlsafe(16)
-    
+
     expires_at = None
     if data.expires_hours:
         expires_at = datetime.utcnow() + timedelta(hours=data.expires_hours)
-    
+
     invite = TeamInvite(
         team_id=team_id,
         invite_code=invite_code,
@@ -579,11 +583,11 @@ async def create_invite_link(
         expires_at=expires_at,
         max_uses=data.max_uses
     )
-    
+
     db.add(invite)
     db.commit()
     db.refresh(invite)
-    
+
     return {
         "code": 0,
         "data": {
@@ -607,30 +611,33 @@ async def join_team_by_invite(
             TeamInvite.is_active == True
         )
     ).first()
-    
+
     if not invite:
-        raise HTTPException(status_code=404, detail="邀请链接无�?)
-    
-    # 检查是否过�?    if invite.expires_at and invite.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=404, detail="邀请链接无?")
+
+    # 检查是否过?
+    if invite.expires_at and invite.expires_at < datetime.utcnow():
         raise HTTPException(status_code=400, detail="邀请链接已过期")
-    
-    # 检查使用次�?    if invite.used_count >= invite.max_uses:
-        raise HTTPException(status_code=400, detail="邀请链接已达到最大使用次�?)
-    
+
+    # 检查使用次?
+    if invite.used_count >= invite.max_uses:
+        raise HTTPException(status_code=400, detail="邀请链接已达到最大使用次?")
+
     team = db.get(Team, invite.team_id)
     if not team:
-        raise HTTPException(status_code=404, detail="团队不存�?)
-    
-    # 检查是否已是成�?    existing = db.exec(
+        raise HTTPException(status_code=404, detail="团队不存?")
+
+    # 检查是否已是成?
+    existing = db.exec(
         select(TeamMember).where(
             TeamMember.team_id == invite.team_id,
             TeamMember.user_id == current_user.id
         )
     ).first()
-    
+
     if existing:
-        raise HTTPException(status_code=400, detail="你已是团队成�?)
-    
+        raise HTTPException(status_code=400, detail="你已是团队成?")
+
     # 加入团队
     member = TeamMember(
         team_id=invite.team_id,
@@ -639,54 +646,54 @@ async def join_team_by_invite(
         invited_by=invite.created_by,
         joined_at=datetime.utcnow()
     )
-    
+
     db.add(member)
-    
+
     # 更新使用次数
     invite.used_count += 1
     db.add(invite)
-    
+
     db.commit()
-    
+
     return {
         "code": 0,
         "data": {
             "team_id": team.id,
             "team_name": team.name
         },
-        "message": f"已成功加入团�?{team.name}"
+        "message": f"已成功加入团?{team.name}"
     }
 
 
 # ==================== 辅助函数 ====================
 
 def _can_view_team(team: Team, user: User, db: Session) -> bool:
-    """检查用户是否可以查看团�?""
+    """检查用户是否可以查看团?"""
     if team.is_public:
         return True
     if team.owner_id == user.id:
         return True
-    
+
     member = db.exec(
         select(TeamMember).where(
             TeamMember.team_id == team.id,
             TeamMember.user_id == user.id
         )
     ).first()
-    
+
     return member is not None
 
 
 def _get_user_role(team: Team, user: User, db: Session) -> Optional[str]:
-    """获取用户在团队中的角�?""
+    """获取用户在团队中的角?"""
     if team.owner_id == user.id:
         return "owner"
-    
+
     member = db.exec(
         select(TeamMember).where(
             TeamMember.team_id == team.id,
             TeamMember.user_id == user.id
         )
     ).first()
-    
+
     return member.role if member else None

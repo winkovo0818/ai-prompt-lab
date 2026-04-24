@@ -376,8 +376,7 @@ async def update_prompt(
             # 检查是否有团队编辑权限
             user_teams = db.exec(
                 select(TeamMember).where(
-                    TeamMember.user_id == current_user.id,
-                    TeamMember.status == "active"
+                    TeamMember.user_id == current_user.id
                 )
             ).all()
             
