@@ -1,7 +1,7 @@
 import time
 from typing import List
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from ..core.database import get_session
 from ..core.deps import get_current_active_user
 from ..models.user import User
@@ -369,10 +369,11 @@ async def get_abtest_list(
     statement = select(ABTestResult).where(
         ABTestResult.user_id == current_user.id
     ).order_by(ABTestResult.created_at.desc())
-    
-    # 总数
-    total_count = len(db.exec(statement).all())
-    
+
+    # 统计总数
+    count_stmt = select(func.count()).select_from(statement.subquery())
+    total_count = db.exec(count_stmt).one()
+
     # 分页
     statement = statement.offset(skip).limit(limit)
     tests = db.exec(statement).all()

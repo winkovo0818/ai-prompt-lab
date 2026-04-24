@@ -263,27 +263,28 @@ function handleEdit(id: number) {
 
 async function handleDuplicate(id: number) {
   try {
-    const prompt = promptStore.prompts.find(p => p.id === id)
-    if (!prompt) {
+    // 先获取完整详情，确保能复制 content
+    const fullPrompt = await promptStore.fetchPromptDetail(id)
+    if (!fullPrompt) {
       ElMessage.error('找不到该 Prompt')
       return
     }
-    
+
     // 复制 Prompt，标题添加 "副本" 后缀
     const newPromptData = {
-      title: `${prompt.title} - 副本`,
-      content: prompt.content,
-      description: prompt.description || '',
-      tags: prompt.tags || [],
+      title: `${fullPrompt.title} - 副本`,
+      content: fullPrompt.content,
+      description: fullPrompt.description || '',
+      tags: fullPrompt.tags || [],
       is_public: false // 副本默认为私有
     }
-    
+
     const newPrompt = await promptStore.createPrompt(newPromptData)
     ElMessage.success('复制成功')
-    
+
     // 刷新列表
     await loadPrompts()
-    
+
     // 询问是否编辑新副本
     ElMessageBox.confirm('是否立即编辑新副本？', '提示', {
       confirmButtonText: '编辑',

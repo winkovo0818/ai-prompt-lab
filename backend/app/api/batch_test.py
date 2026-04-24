@@ -2,7 +2,7 @@
 import time
 from typing import List, Dict
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from datetime import datetime
 
 from ..core.database import get_session
@@ -250,10 +250,11 @@ async def get_batch_test_list(
     statement = select(BatchTestResult).where(
         BatchTestResult.user_id == current_user.id
     ).order_by(BatchTestResult.created_at.desc())
-    
-    # 总数
-    total_count = len(db.exec(statement).all())
-    
+
+    # 统计总数
+    count_stmt = select(func.count()).select_from(statement.subquery())
+    total_count = db.exec(count_stmt).one()
+
     # 分页
     statement = statement.offset(skip).limit(limit)
     tests = db.exec(statement).all()

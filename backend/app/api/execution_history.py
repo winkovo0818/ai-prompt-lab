@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select, and_
+from sqlmodel import Session, select, and_, func
 from ..core.database import get_session
 from ..core.deps import get_current_active_user
 from ..models.user import User
@@ -111,10 +111,11 @@ async def get_execution_history_list(
     statement = select(ExecutionHistory).where(and_(*conditions)).order_by(
         ExecutionHistory.created_at.desc()
     )
-    
-    # 统计总数
-    total = len(db.exec(statement).all())
-    
+
+    # 统计总数（高效方式）
+    count_stmt = select(func.count()).select_from(statement.subquery())
+    total = db.exec(count_stmt).one()
+
     # 分页查询
     statement = statement.offset(skip).limit(limit)
     results = db.exec(statement).all()

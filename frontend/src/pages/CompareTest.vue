@@ -518,9 +518,10 @@ async function handleRunTest() {
       generate_report: testConfig.generate_report
     })
 
-        
+    // 保存测试结果
+    testResults.value = response.data
     ElMessage.success('测试完成')
-    
+
     // 刷新历史记录列表
     await loadTestHistory()
   } catch (error: any) {
@@ -544,7 +545,8 @@ function resetForm() {
 async function loadTestHistory() {
   try {
     const response = await abtestAPI.getList({ skip: 0, limit: 50 }) as any
-      } catch (error) {
+    testHistory.value = response.data?.items || []
+  } catch (error) {
     console.error('加载测试历史失败:', error)
   }
 }
