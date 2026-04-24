@@ -9,7 +9,7 @@ class PromptBranch(SQLModel, table=True):
     """Prompt 分支"""
     __tablename__ = "prompt_branch"
 
-    id: int = Field(primary_key=True, autoincrement=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     prompt_id: int = Field(foreign_key="prompt.id", nullable=False, index=True)
     name: str = Field(max_length=100, nullable=False)
     description: Optional[str] = Field(default=None)

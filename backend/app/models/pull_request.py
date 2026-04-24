@@ -8,7 +8,7 @@ class PromptPullRequest(SQLModel, table=True):
     """Prompt Pull Request"""
     __tablename__ = "prompt_pull_request"
 
-    id: int = Field(primary_key=True, autoincrement=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     prompt_id: int = Field(foreign_key="prompt.id", nullable=False, index=True)
     source_branch_id: int = Field(foreign_key="prompt_branch.id", nullable=False)
     target_branch_id: int = Field(foreign_key="prompt_branch.id", nullable=False)
