@@ -839,7 +839,8 @@ watch(fileVariableValues, () => {
 }, { deep: true })
 
 // ==================== 自动保存草稿 ====================
-const DRAFT_KEY = 'prompt_draft'
+// 按用户隔离草稿
+const DRAFT_KEY = computed(() => `prompt_draft_${userStore.userInfo?.id || 'anonymous'}`)
 const DRAFT_INTERVAL = 30000 // 30秒自动保存
 const lastSavedAt = ref<string | null>(null)
 const hasDraft = ref(false)
@@ -848,7 +849,7 @@ let autoSaveTimer: ReturnType<typeof setInterval> | null = null
 // 获取草稿
 function getDraft() {
   try {
-    const draft = localStorage.getItem(DRAFT_KEY)
+    const draft = localStorage.getItem(DRAFT_KEY.value)
     if (draft) {
       return JSON.parse(draft)
     }
@@ -862,10 +863,10 @@ function getDraft() {
 function saveDraft() {
   // 只在新建模式下保存草稿
   if (isEditMode.value) return
-  
+
   // 如果没有内容，不保存
   if (!formData.title && !formData.content) return
-  
+
   try {
     const draft = {
       title: formData.title,
@@ -875,9 +876,9 @@ function saveDraft() {
       is_public: formData.is_public,
       savedAt: new Date().toISOString()
     }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    localStorage.setItem(DRAFT_KEY.value, JSON.stringify(draft))
     lastSavedAt.value = new Date().toLocaleTimeString('zh-CN')
-      } catch (e) {
+  } catch (e) {
     console.error('保存草稿失败:', e)
   }
 }

@@ -722,7 +722,7 @@ async function handleJoinByCode() {
 
 onMounted(async () => {
   await loadTeams()
-  
+
   // 检查 URL 是否有邀请码参数
   const urlParams = new URLSearchParams(window.location.search)
   const joinParam = urlParams.get('join')
@@ -730,8 +730,20 @@ onMounted(async () => {
     joinCode.value = joinParam
     // 清除 URL 参数
     window.history.replaceState({}, '', '/teams')
-    // 自动尝试加入
-    await handleJoinByCode()
+    // 显示确认对话框
+    ElMessageBox.confirm(
+      '您收到了一个团队邀请，确定要加入该团队吗？',
+      '加入团队确认',
+      {
+        confirmButtonText: '确定加入',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    ).then(async () => {
+      await handleJoinByCode()
+    }).catch(() => {
+      // 用户取消，不做任何操作
+    })
   }
 })
 </script>

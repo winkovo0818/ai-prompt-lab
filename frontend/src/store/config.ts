@@ -6,7 +6,8 @@ export interface AIConfig {
   id: number
   name: string
   baseUrl: string
-  apiKey: string
+  apiKey: string  // 始终为空字符串
+  maskedApiKey: string  // 脱敏后的 Key
   model: string
   description?: string
   isGlobal?: boolean
@@ -104,7 +105,8 @@ export const useConfigStore = defineStore('config', () => {
         id: config.id,
         name: config.name,
         baseUrl: config.base_url,
-        apiKey: config.api_key,
+        apiKey: '',  // 后端不再返回真实 API Key
+        maskedApiKey: config.masked_api_key || '',  // 脱敏后的 Key 用于显示
         model: config.model,
         description: config.description,
         isGlobal: config.is_global,
@@ -112,15 +114,6 @@ export const useConfigStore = defineStore('config', () => {
       }))
     } catch (error) {
       console.error('加载 AI 配置失败:', error)
-      // 如果后端失败，尝试从 localStorage 加载
-      const savedConfigs = localStorage.getItem('ai-configs')
-      if (savedConfigs) {
-        try {
-          aiConfigs.value = JSON.parse(savedConfigs)
-        } catch (e) {
-          console.error('从 localStorage 加载失败:', e)
-        }
-      }
     }
   }
 
