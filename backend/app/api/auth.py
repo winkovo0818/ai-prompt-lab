@@ -60,17 +60,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_session)):
         id=new_user.id,
         username=new_user.username,
         email=new_user.email,
-        api_key=new_user.api_key,
         role=new_user.role,
-        nickname=new_user.nickname,
-        phone=new_user.phone,
         avatar_url=new_user.avatar_url,
-        bio=new_user.bio,
-        company=new_user.company,
-        location=new_user.location,
-        website=new_user.website,
-        last_login_at=new_user.last_login_at,
-        login_count=new_user.login_count,
         is_active=new_user.is_active,
         created_at=new_user.created_at,
         updated_at=new_user.updated_at
@@ -143,22 +134,14 @@ async def get_current_user_info(
     user = db.get(User, current_user.id)
     if not user:
         return error_response(code=1010, message="用户不存在")
-    
+
     user_response = UserResponse(
         id=user.id,
         username=user.username,
         email=user.email,
-        api_key=user.api_key,
-        role=user.role,
-        nickname=user.nickname,
-        phone=user.phone,
+        full_name=user.full_name,
         avatar_url=user.avatar_url,
-        bio=user.bio,
-        company=user.company,
-        location=user.location,
-        website=user.website,
-        last_login_at=user.last_login_at,
-        login_count=user.login_count,
+        role=user.role,
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at
@@ -174,13 +157,9 @@ async def update_api_key(
     db: Session = Depends(get_session)
 ):
     """更新用户的 API Key"""
-    
-    current_user.api_key = api_key
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-    
-    return success_response(message="API Key 更新成功")
+    # 注意: User 模型当前没有 api_key 字段，此接口暂时禁用
+    # 如需启用，需要先在数据库添加 api_key 字段
+    return error_response(code=1011, message="API Key 功能暂时不可用")
 
 
 @router.put("/profile", response_model=dict)
@@ -210,53 +189,29 @@ async def update_profile(
     if profile_data.password:
         user.hashed_password = get_password_hash(profile_data.password)
     
-    # 更新其他个人资料字段
-    if profile_data.nickname is not None:
-        user.nickname = profile_data.nickname
-    if profile_data.phone is not None:
-        # 检查手机号是否已被使用
-        if profile_data.phone:
-            existing = db.exec(
-                select(User).where(User.phone == profile_data.phone, User.id != user.id)
-            ).first()
-            if existing:
-                return error_response(code=1005, message="手机号已被使用")
-        user.phone = profile_data.phone
-    if profile_data.bio is not None:
-        user.bio = profile_data.bio
-    if profile_data.company is not None:
-        user.company = profile_data.company
-    if profile_data.location is not None:
-        user.location = profile_data.location
-    if profile_data.website is not None:
-        user.website = profile_data.website
+    # 更新其他个人资料字段 (只支持 full_name，因为其他字段数据库中不存在)
+    # 注意: nickname, phone, bio, company, location, website 字段暂不支持
+    if profile_data.full_name is not None:
+        user.full_name = profile_data.full_name
     
     user.updated_at = datetime.utcnow()
     
     db.add(user)
     db.commit()
     db.refresh(user)
-    
+
     user_response = UserResponse(
         id=user.id,
         username=user.username,
         email=user.email,
-        api_key=user.api_key,
-        role=user.role,
-        nickname=user.nickname,
-        phone=user.phone,
+        full_name=user.full_name,
         avatar_url=user.avatar_url,
-        bio=user.bio,
-        company=user.company,
-        location=user.location,
-        website=user.website,
-        last_login_at=user.last_login_at,
-        login_count=user.login_count,
+        role=user.role,
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at
     )
-    
+
     return success_response(data=user_response.model_dump(), message="个人资料更新成功")
 
 

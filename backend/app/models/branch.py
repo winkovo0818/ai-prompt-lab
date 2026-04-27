@@ -15,7 +15,7 @@ class PromptBranch(SQLModel, table=True):
     description: Optional[str] = Field(default=None)
     base_branch_id: Optional[int] = Field(default=None, foreign_key="prompt_branch.id")
     is_default: bool = Field(default=False)
-    created_by: int = Field(foreign_key="user.id", nullable=False)
+    created_by: int = Field(foreign_key="users.id", nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

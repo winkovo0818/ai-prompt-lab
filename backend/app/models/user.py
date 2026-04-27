@@ -46,6 +46,8 @@ class UserResponse(SQLModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    # 以下字段已移除，因数据库中不存在
+    # api_key, nickname, phone, bio, company, location, website, last_login_at, login_count
 
 
 class UserUpdate(SQLModel):

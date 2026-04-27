@@ -55,6 +55,7 @@ class ApiQuota(SQLModel, table=True):
 class ApiUsage(SQLModel, table=True):
     """API 使用记录表（按日期汇总）"""
     __tablename__ = "api_usage"
+    model_config = {"protected_namespaces": ()}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     

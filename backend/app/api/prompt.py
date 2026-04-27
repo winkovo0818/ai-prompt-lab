@@ -469,19 +469,25 @@ async def delete_prompt(
     db: Session = Depends(get_session)
 ):
     """删除 Prompt"""
-    
+
     prompt = db.get(Prompt, prompt_id)
-    
+
     if not prompt:
         return error_response(code=2001, message="Prompt 不存在")
-    
+
     # 权限检查
     if prompt.user_id != current_user.id:
         return error_response(code=2003, message="无权删除该 Prompt")
-    
+
+    # 先删除关联的版本记录
+    from app.models.prompt_version import PromptVersion
+    versions = db.exec(select(PromptVersion).where(PromptVersion.prompt_id == prompt_id)).all()
+    for version in versions:
+        db.delete(version)
+
     db.delete(prompt)
     db.commit()
-    
+
     return success_response(message="Prompt 删除成功")
 
 

@@ -14,7 +14,7 @@ class PromptCommit(SQLModel, table=True):
     title: str = Field(max_length=255, nullable=False)
     content: str = Field(nullable=False)
     variables_schema: Optional[dict] = Field(default=None, sa_type=JSON)
-    created_by: int = Field(foreign_key="user.id", nullable=False)
+    created_by: int = Field(foreign_key="users.id", nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships

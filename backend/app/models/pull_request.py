@@ -15,9 +15,9 @@ class PromptPullRequest(SQLModel, table=True):
     title: str = Field(max_length=255, nullable=False)
     description: Optional[str] = Field(default=None)
     status: str = Field(default="open")  # open, merged, closed
-    author_id: int = Field(foreign_key="user.id", nullable=False)
-    reviewer_id: Optional[int] = Field(default=None, foreign_key="user.id")
-    merged_by: Optional[int] = Field(default=None, foreign_key="user.id")
+    author_id: int = Field(foreign_key="users.id", nullable=False)
+    reviewer_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    merged_by: Optional[int] = Field(default=None, foreign_key="users.id")
     merged_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
