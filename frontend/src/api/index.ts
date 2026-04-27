@@ -28,11 +28,21 @@ export interface UserInfo {
   id: number
   username: string
   email: string
+  full_name?: string
+  nickname?: string
+  phone?: string
+  company?: string
+  location?: string
+  website?: string
+  bio?: string
   avatar_url?: string
   api_key?: string
   role: string
   is_active: boolean
   created_at: string
+  updated_at?: string
+  last_login_at?: string
+  login_count?: number
 }
 
 export interface TokenResponse {
@@ -106,6 +116,7 @@ export interface AIConfigResponse {
   name: string
   base_url: string
   api_key: string
+  masked_api_key?: string
   model: string
   description?: string
   is_global?: boolean
@@ -355,6 +366,42 @@ export const batchTestAPI = {
   // 导出测试报告
   export: (id: number) => 
     request.post<APIResponse<any>>(`/api/batch-test/${id}/export`)
+}
+
+// Prompt 测试集 API
+export const testSuiteAPI = {
+  getByPrompt: (promptId: number) =>
+    request.get<APIResponse<any[]>>(`/api/test-suite/prompt/${promptId}`),
+
+  create: (data: {
+    prompt_id: number
+    name: string
+    description?: string
+    suite_type?: 'smoke' | 'full'
+    is_active?: boolean
+    auto_run_on_save?: boolean
+    baseline_mode?: 'previous_version' | 'fixed_version'
+    fixed_baseline_version?: number | null
+    test_cases?: any[]
+  }) => request.post<APIResponse<any>>('/api/test-suite', data),
+
+  update: (id: number, data: any) =>
+    request.put<APIResponse<any>>(`/api/test-suite/${id}`, data),
+
+  run: (id: number, data: {
+    candidate_version?: number
+    baseline_version?: number
+    trigger_source?: 'manual' | 'save'
+    model?: string
+    temperature?: number
+    enable_evaluation?: boolean
+  }) => request.post<APIResponse<any>>(`/api/test-suite/${id}/run`, data),
+
+  getRunDetail: (id: number) =>
+    request.get<APIResponse<any>>(`/api/test-suite/runs/${id}`),
+
+  getRuns: (params?: { prompt_id?: number, suite_id?: number, skip?: number, limit?: number }) =>
+    request.get<APIResponse<{ items: any[], total: number }>>('/api/test-suite/runs', { params })
 }
 
 // Prompt 优化 API
@@ -924,4 +971,3 @@ export const teamAPI = {
   joinByInvite: (inviteCode: string) =>
     request.post<APIResponse<{ team_id: number; team_name: string }>>(`/api/team/join/${inviteCode}`)
 }
-

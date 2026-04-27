@@ -5,8 +5,10 @@ from .config import settings
 # 导入所有模型确保表被创建
 from ..models.user import User
 from ..models.prompt import Prompt
+from ..models.prompt_version import PromptVersion
 from ..models.uploaded_file import UploadedFile
 from ..models.api_quota import ApiQuota, ApiUsage
+from ..models.test_suite import PromptTestSuite, PromptTestRun
 
 # 创建数据库引擎（配置 utf8mb4 支持 emoji）
 engine = create_engine(
@@ -29,4 +31,3 @@ def get_session() -> Generator[Session, None, None]:
     """获取数据库会话"""
     with Session(engine) as session:
         yield session
-

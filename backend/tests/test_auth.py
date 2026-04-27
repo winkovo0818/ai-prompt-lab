@@ -13,7 +13,8 @@ async def test_login_success(client: AsyncClient, test_user):
     )
     assert response.status_code == 200
     data = response.json()
-    assert "access_token" in data
+    assert data["code"] == 0
+    assert "access_token" in data["data"]
     assert data["data"]["user"]["username"] == "testuser"
 
 
@@ -24,7 +25,8 @@ async def test_login_invalid_credentials(client: AsyncClient, test_user):
         "/api/auth/login",
         json={"username": "testuser", "password": "wrongpassword"}
     )
-    assert response.status_code == 401
+    assert response.status_code == 200
+    assert response.json()["code"] != 0
 
 
 @pytest.mark.asyncio
@@ -34,7 +36,8 @@ async def test_login_user_not_found(client: AsyncClient):
         "/api/auth/login",
         json={"username": "nonexistent", "password": "password"}
     )
-    assert response.status_code == 401
+    assert response.status_code == 200
+    assert response.json()["code"] != 0
 
 
 @pytest.mark.asyncio
@@ -50,7 +53,8 @@ async def test_register_success(client: AsyncClient):
     )
     assert response.status_code == 200
     data = response.json()
-    assert "access_token" in data
+    assert data["code"] == 0
+    assert "access_token" in data["data"]
     assert data["data"]["user"]["username"] == "newuser"
 
 
@@ -65,4 +69,5 @@ async def test_register_duplicate_username(client: AsyncClient, test_user):
             "password": "password123"
         }
     )
-    assert response.status_code == 400
+    assert response.status_code == 200
+    assert response.json()["code"] != 0

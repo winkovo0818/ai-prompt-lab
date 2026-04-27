@@ -5,7 +5,7 @@ import 'highlight.js/styles/atom-one-dark.css'
 import 'github-markdown-css/github-markdown-light.css'
 
 // 配置 xss 过滤器
-const xssOptions: xss.IOptions = {
+const xssOptions: any = {
   whiteList: {
     // 允许的标签
     a: ['href', 'title', 'target', 'rel'],
@@ -29,7 +29,7 @@ const xssOptions: xss.IOptions = {
   },
   stripIgnoreTag: true,
   stripIgnoreTagBody: ['script', 'style', 'iframe', 'object', 'embed'],
-  onTag: function(tag: string, html: string, options: any): string {
+  onTag: function(tag: string, html: string): string {
     // 禁止 javascript: 协议
     if (tag === 'a' && html.includes('javascript:')) {
       return ''
@@ -228,4 +228,3 @@ export function highlightVariables(content: string): string {
     '<span class="text-primary font-semibold">${{$1}}</span>'
   )
 }
-

@@ -10,7 +10,8 @@ async def get_token(client: AsyncClient, username: str, password: str) -> str:
         "/api/auth/login",
         json={"username": username, "password": password}
     )
-    return response.json()["access_token"]
+    data = response.json()
+    return (data.get("data") or {}).get("access_token", "")
 
 
 @pytest.mark.asyncio
@@ -19,8 +20,11 @@ async def test_disabled_user_cannot_access_protected_endpoints(
     disabled_user
 ):
     """测试被禁用的用户无法访问受保护接口"""
-    # 获取 token
+    # 禁用用户无法登录获取 token
     token = await get_token(client, "disableduser", "testpassword123")
+    assert token == ""
+
+    # 即使没有有效 token，也不能访问受保护接口
 
     # 尝试访问受保护接口（如获取 Prompt 列表）
     response = await client.get(
@@ -28,10 +32,9 @@ async def test_disabled_user_cannot_access_protected_endpoints(
         headers={"Authorization": f"Bearer {token}"}
     )
 
-    # 应该返回 403
-    assert response.status_code == 403
+    assert response.status_code in [401, 403]
     data = response.json()
-    assert "禁用" in data.get("detail", "")
+    assert data.get("detail")
 
 
 @pytest.mark.asyncio

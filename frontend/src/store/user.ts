@@ -14,7 +14,7 @@ export const useUserStore = defineStore('user', () => {
   // 登录
   async function login(username: string, password: string) {
     try {
-      const response = await authAPI.login({ username, password })
+      const response = await authAPI.login({ username, password }) as any
       const { access_token, user } = response.data
 
       token.value = access_token
@@ -33,7 +33,7 @@ export const useUserStore = defineStore('user', () => {
   // 注册
   async function register(username: string, email: string, password: string) {
     try {
-      const response = await authAPI.register({ username, email, password })
+      const response = await authAPI.register({ username, email, password }) as any
       const { access_token, user } = response.data
 
       token.value = access_token
@@ -59,7 +59,7 @@ export const useUserStore = defineStore('user', () => {
   // 更新用户信息
   async function fetchUserInfo() {
     try {
-      const response = await authAPI.getCurrentUser()
+      const response = await authAPI.getCurrentUser() as any
       userInfo.value = response.data
       tokenStorage.setUser(response.data)
     } catch (error) {
@@ -94,4 +94,3 @@ export const useUserStore = defineStore('user', () => {
     updateApiKey
   }
 })
-

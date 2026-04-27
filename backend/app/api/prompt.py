@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlmodel import Session, select, or_
 from ..core.database import get_session
 from ..core.deps import get_current_active_user
@@ -11,6 +11,7 @@ from ..models.prompt import (
 )
 from ..models.prompt_version import PromptVersion, PromptVersionResponse
 from ..models.team import TeamPrompt, TeamMember
+from ..services.test_runner_service import TestRunnerService
 from ..utils.response import success_response, error_response
 
 router = APIRouter(prefix="/api/prompt", tags=["Prompt管理"])
@@ -358,6 +359,7 @@ async def get_prompt_detail(
 async def update_prompt(
     prompt_id: int,
     prompt_data: PromptUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_session)
 ):
@@ -433,6 +435,14 @@ async def update_prompt(
         db.add(prompt)
         db.commit()
         db.refresh(prompt)
+
+        if content_changed:
+            background_tasks.add_task(
+                TestRunnerService.run_auto_smoke_suites,
+                prompt.id,
+                prompt.version,
+                current_user.id,
+            )
         
         # 检查当前用户是否已收藏
         favorite_statement = select(UserPromptFavorite).where(
@@ -572,4 +582,3 @@ async def toggle_favorite(
             data={"is_favorite": True},
             message="已收藏"
         )
-

@@ -26,7 +26,7 @@ async def get_token(client: AsyncClient, username: str, password: str) -> str:
         "/api/auth/login",
         json={"username": username, "password": password}
     )
-    return response.json()["access_token"]
+    return response.json()["data"]["access_token"]
 
 
 @pytest.mark.asyncio

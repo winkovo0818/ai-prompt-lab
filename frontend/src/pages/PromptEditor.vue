@@ -185,6 +185,19 @@
             </div>
           </el-tab-pane>
 
+          <el-tab-pane v-if="isEditMode" label="测试" name="tests">
+            <template #label>
+              <div class="flex items-center space-x-1.5">
+                <el-icon :size="13"><DocumentChecked /></el-icon>
+                <span>测试</span>
+              </div>
+            </template>
+            <PromptTestPanel
+              :prompt-id="Number(route.params.id)"
+              :version="currentVersion"
+            />
+          </el-tab-pane>
+
           <el-tab-pane label="参数" name="settings">
             <template #label>
               <el-icon :size="13"><Setting /></el-icon>
@@ -222,7 +235,7 @@ import { usePromptStore } from '@/store/prompt'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import { runAPI, promptAPI, promptAnalysisAPI } from '@/api'
-import { ArrowLeft, Connection, Clock, CaretRight, Ticket, MagicStick, Setting, Delete, UserFilled, Loading } from '@element-plus/icons-vue'
+import { ArrowLeft, Connection, Clock, CaretRight, Ticket, MagicStick, Setting, Delete, UserFilled, Loading, DocumentChecked } from '@element-plus/icons-vue'
 import { extractVariables } from '@/utils/markdown'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Header from '@/components/Layout/Header.vue'
@@ -230,6 +243,7 @@ import VariableInputWithFile from '@/components/VariableInputWithFile.vue'
 import ResultViewer from '@/components/ResultViewer.vue'
 import PromptCodeEditor from '@/components/PromptCodeEditor.vue'
 import PromptStructureGuide from '@/components/PromptStructureGuide.vue'
+import PromptTestPanel from '@/components/PromptTestPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -252,6 +266,7 @@ const teamShared = ref(false)
 const teamInfo = ref<any>(null)
 const autoShowRendered = ref(false)
 const promptOwnerId = ref<number | null>(null)
+const currentVersion = ref(1)
 const isOwner = computed(() => promptOwnerId.value === userStore.userInfo?.id)
 const isEditMode = computed(() => !!route.params.id)
 const variables = computed(() => extractVariables(formData.content))
@@ -268,6 +283,7 @@ async function loadPrompt() {
     formData.tags = prompt.tags || []
     formData.is_public = prompt.is_public
     promptOwnerId.value = prompt.user_id || null
+    currentVersion.value = prompt.version || 1
     canEdit.value = prompt.can_edit !== false
     teamShared.value = prompt.team_shared || false
     teamInfo.value = prompt.team_info || null
@@ -278,9 +294,13 @@ async function handleSave() {
   if (!formData.title || !formData.content) { ElMessage.warning('请填写标题和内容'); return }
   saving.value = true
   try {
-    if (isEditMode.value) await promptStore.updatePrompt(Number(route.params.id), formData)
+    if (isEditMode.value) {
+      const updatedPrompt = await promptStore.updatePrompt(Number(route.params.id), formData)
+      currentVersion.value = updatedPrompt.version || currentVersion.value
+    }
     else {
       const newPrompt = await promptStore.createPrompt(formData)
+      currentVersion.value = newPrompt.version || 1
       router.replace(`/editor/${newPrompt.id}`)
     }
   } finally { saving.value = false }
@@ -313,7 +333,7 @@ async function handleAnalyze() {
   if (!formData.content) return
   analyzing.value = true
   try {
-    const res = await promptAnalysisAPI.analyze({ content: formData.content, title: formData.title })
+    const res = await promptAnalysisAPI.analyze({ content: formData.content, title: formData.title }) as any
     analysisResult.value = res.data.analysis
     activeTab.value = 'analysis'
   } catch (e) { ElMessage.error('分析失败') } finally { analyzing.value = false }

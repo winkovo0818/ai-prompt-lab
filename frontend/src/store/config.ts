@@ -7,7 +7,7 @@ export interface AIConfig {
   name: string
   baseUrl: string
   apiKey: string  // 始终为空字符串
-  maskedApiKey: string  // 脱敏后的 Key
+  maskedApiKey?: string  // 脱敏后的 Key
   model: string
   description?: string
   isGlobal?: boolean
@@ -120,7 +120,7 @@ export const useConfigStore = defineStore('config', () => {
   // 加载用户配置的可用模型列表
   async function loadAvailableModels() {
     try {
-      const response = await runAPI.getModels()
+      const response = await runAPI.getModels() as any
       const models = response.data as any[]
 
       if (models && models.length > 0) {
@@ -170,6 +170,7 @@ export const useConfigStore = defineStore('config', () => {
         name: data.name,
         baseUrl: data.base_url,
         apiKey: data.api_key,
+        maskedApiKey: data.masked_api_key || '',
         model: data.model,
         description: data.description
       }
@@ -201,6 +202,7 @@ export const useConfigStore = defineStore('config', () => {
           name: data.name,
           baseUrl: data.base_url,
           apiKey: data.api_key,
+          maskedApiKey: data.masked_api_key || '',
           model: data.model,
           description: data.description
         }
@@ -258,4 +260,3 @@ export const useConfigStore = defineStore('config', () => {
     loadAvailableModels
   }
 })
-
