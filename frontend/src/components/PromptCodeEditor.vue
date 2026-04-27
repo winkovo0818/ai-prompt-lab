@@ -1,23 +1,23 @@
 <template>
-  <div class="prompt-code-editor-container" :class="{ disabled, focused }">
-    <div class="editor-inner relative min-h-[400px] flex flex-col">
-      <!-- Line Numbers (Visual only) -->
-      <div class="absolute left-0 top-0 bottom-0 w-10 bg-zinc-50 dark:bg-zinc-950/50 border-r border-zinc-100 dark:border-zinc-800/50 flex flex-col items-center py-4 text-[10px] font-mono text-zinc-300 dark:text-zinc-600 select-none">
+  <div class="prompt-code-editor-container h-full flex flex-col relative group" :class="{ disabled, focused }">
+    <div class="editor-inner relative flex-1 flex overflow-hidden">
+      <!-- Soft Line Numbers -->
+      <div class="w-10 bg-transparent border-r border-zinc-100/50 dark:border-zinc-800/30 flex flex-col items-center py-4 text-[10px] font-mono text-zinc-200 dark:text-zinc-700 select-none shrink-0">
         <div v-for="i in lineCount" :key="i" class="leading-relaxed h-[1.8em]">{{ i }}</div>
       </div>
 
-      <div class="flex-1 relative ml-10">
-        <!-- Background Highlight Layer -->
+      <div class="flex-1 relative overflow-hidden">
+        <!-- Syntax Layer -->
         <div 
           ref="highlightRef" 
           class="highlight-layer absolute inset-0 p-4 font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-words pointer-events-none overflow-hidden text-transparent"
           v-html="highlightedContent"
         ></div>
         
-        <!-- Interactive Textarea -->
+        <!-- Editable Area -->
         <textarea
           ref="textareaRef"
-          class="editor-textarea absolute inset-0 w-full h-full p-4 font-mono text-[13px] leading-relaxed bg-transparent text-zinc-800 dark:text-zinc-200 border-none outline-none resize-none caret-brand-accent"
+          class="editor-textarea absolute inset-0 w-full h-full p-4 font-mono text-[13px] leading-relaxed bg-transparent text-zinc-800 dark:text-zinc-300 border-none outline-none resize-none caret-brand-accent overflow-y-auto scrollbar-hide"
           :value="modelValue"
           :placeholder="placeholder"
           :disabled="disabled"
@@ -30,20 +30,14 @@
       </div>
     </div>
     
-    <!-- Footer Status -->
-    <div class="editor-footer flex items-center justify-between px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-800/50">
-      <div class="flex items-center space-x-4">
-        <div class="flex items-center space-x-1.5">
-          <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-          <span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">UTF-8</span>
-        </div>
-        <div class="flex items-center space-x-1.5">
-          <el-icon :size="10" class="text-zinc-400"><Tickets /></el-icon>
-          <span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{{ variableCount }} 动态项</span>
-        </div>
+    <!-- Floating Minimal Status Indicators -->
+    <div class="absolute bottom-4 right-4 flex items-center space-x-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <div class="px-2 py-1 rounded-full bg-white/80 dark:bg-zinc-800/80 backdrop-blur-md border border-zinc-100 dark:border-zinc-700 shadow-sm flex items-center space-x-1.5">
+        <div class="w-1 h-1 rounded-full bg-brand-accent"></div>
+        <span class="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{{ variableCount }} Vars</span>
       </div>
-      <div class="text-[9px] font-mono text-zinc-400 uppercase tracking-tighter">
-        Ln {{ cursorLine }}, Col {{ cursorCol }}
+      <div class="px-2 py-1 rounded-full bg-white/80 dark:bg-zinc-800/80 backdrop-blur-md border border-zinc-100 dark:border-zinc-700 shadow-sm">
+        <span class="text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-tighter">{{ cursorLine }}:{{ cursorCol }}</span>
       </div>
     </div>
   </div>
@@ -51,7 +45,6 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { Tickets } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   modelValue: string
@@ -140,10 +133,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.prompt-code-editor-container {
-  @apply rounded-xl border border-transparent bg-white dark:bg-zinc-950 overflow-hidden transition-all duration-200;
-}
-
 .editor-textarea {
   line-height: 1.8;
 }
@@ -153,14 +142,16 @@ onMounted(() => {
 }
 
 :deep(.hl-var-bracket) {
-  @apply text-brand-accent font-bold opacity-40;
+  @apply text-brand-accent font-bold opacity-30;
 }
 
 :deep(.hl-var-name) {
-  @apply text-brand-accent font-bold underline decoration-brand-accent/30 underline-offset-4 opacity-100;
+  @apply text-brand-accent font-bold underline decoration-brand-accent/20 underline-offset-4 opacity-100;
 }
 
 .disabled .editor-textarea {
   @apply opacity-70 cursor-not-allowed;
 }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 </style>

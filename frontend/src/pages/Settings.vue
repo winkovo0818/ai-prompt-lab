@@ -1,243 +1,218 @@
 <template>
-  <div class="settings-page">
+  <div class="settings-page h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col overflow-hidden">
     <Header />
     
-    <div class="content-container">
-      <div class="main-content p-6">
-        <div class="page-header mb-6">
-          <h1 class="text-2xl font-bold text-gray-900 mb-2">AI 配置管理</h1>
-          <p class="text-gray-600">配置多个 AI 以便在测试中使用</p>
+    <main class="flex-1 overflow-y-auto py-12 px-6">
+      <div class="max-w-[1200px] mx-auto space-y-12">
+        
+        <!-- Page Header -->
+        <div class="flex items-center justify-between mb-8">
+          <div class="space-y-1">
+            <h1 class="text-2xl font-black text-zinc-900 dark:text-white tracking-tight uppercase">配置管理 AI Console</h1>
+            <p class="text-zinc-500 text-sm font-medium">配置多端 AI 推理引擎，定义系统全局运行参数</p>
+          </div>
+          <el-button type="primary" @click="showAddDialog = true" class="h-10 px-6 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold border-none shadow-premium">
+            <el-icon class="mr-2"><Plus /></el-icon>添加新引擎
+          </el-button>
         </div>
 
-        <div class="settings-content">
-          <!-- 全局AI配置（仅管理员可见） -->
-          <div v-if="userStore.userInfo?.role === 'admin'" class="global-ai-section">
-            <div class="section-header">
+        <!-- Section: Global Config (Admin Only) -->
+        <section v-if="userStore.userInfo?.role === 'admin'" class="space-y-6">
+          <div class="flex items-center justify-between px-1">
+            <div class="flex items-center space-x-2">
+              <div class="w-1 h-4 bg-zinc-900 dark:bg-white rounded-full"></div>
+              <h2 class="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">系统预设 Global Defaults</h2>
+            </div>
+            <button @click="navigateToGlobalConfig" class="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+              管理核心路由
+            </button>
+          </div>
+          
+          <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-subtle flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+            <div class="flex items-center space-x-6">
+              <div class="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+                <el-icon :size="24"><Setting /></el-icon>
+              </div>
               <div>
-                <h2 class="text-lg font-semibold text-gray-900">全局AI配置</h2>
-                <p class="text-sm text-gray-500 mt-1">为未配置AI的用户提供默认服务</p>
+                <div class="flex items-center space-x-2 mb-1">
+                  <span class="text-sm font-bold text-zinc-900 dark:text-white">系统默认服务通道</span>
+                  <span :class="globalAIConfig?.enable_default_ai ? 'bg-emerald-50 text-emerald-600' : 'bg-zinc-100 text-zinc-400'" class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest">
+                    {{ globalAIConfig?.enable_default_ai ? 'Running' : 'Offline' }}
+                  </span>
+                </div>
+                <p class="text-xs text-zinc-500 font-medium">
+                  {{ globalAIConfig?.enable_default_ai ? `当前路由至: ${globalAIConfig.default_ai_model}` : '尚未启用全局默认 AI，用户需自行配置节点' }}
+                </p>
               </div>
-              <el-button @click="navigateToGlobalConfig" :icon="Setting">
-                管理全局配置
-              </el-button>
             </div>
-            
-            <el-card v-if="globalAIConfig" shadow="never" class="global-config-card">
-              <div class="global-config-info">
-                <div class="config-status">
-                  <el-tag :type="globalAIConfig.enable_default_ai ? 'success' : 'info'" size="large">
-                    {{ globalAIConfig.enable_default_ai ? '已启用' : '未启用' }}
-                  </el-tag>
-                </div>
-                <div v-if="globalAIConfig.enable_default_ai" class="config-details">
-                  <div class="detail-item">
-                    <span class="label">模型:</span>
-                    <span class="value">{{ globalAIConfig.default_ai_model }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="label">Base URL:</span>
-                    <span class="value">{{ globalAIConfig.default_ai_base_url }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="label">API Key:</span>
-                    <span class="value">{{ globalAIConfig.default_ai_api_key || '已配置' }}</span>
-                  </div>
-                </div>
-                <div v-else class="config-hint">
-                  <el-icon><InfoFilled /></el-icon>
-                  <span>未启用全局AI，用户需要自行配置</span>
-                </div>
-              </div>
-            </el-card>
-          </div>
-
-          <!-- AI 配置列表 -->
-          <div class="ai-configs-section">
-            <div class="section-header">
-              <h2 class="text-lg font-semibold text-gray-900">我的 AI 配置</h2>
-              <el-button type="primary" @click="showAddDialog = true">
-                <el-icon><Plus /></el-icon>
-                添加 AI 配置
-              </el-button>
-            </div>
-
-            <div v-if="userOwnedConfigs.length === 0" class="empty-state">
-              <el-empty description="还没有配置 AI">
-                <el-button type="primary" @click="showAddDialog = true">
-                  <el-icon><Plus /></el-icon>
-                  添加第一个 AI
-                </el-button>
-              </el-empty>
-            </div>
-
-            <div v-else class="ai-configs-list">
-              <div 
-                v-for="config in userOwnedConfigs" 
-                :key="config.id"
-                class="ai-config-card"
-              >
-                <div class="card-header">
-                  <div class="card-title">
-                    <el-icon><Cpu /></el-icon>
-                    <h3>{{ config.name }}</h3>
-                  </div>
-                  <div class="card-actions">
-                    <el-button link @click="handleEdit(config)">
-                      <el-icon><Edit /></el-icon>
-                    </el-button>
-                    <el-button link type="danger" @click="handleDelete(config.id)">
-                      <el-icon><Delete /></el-icon>
-                    </el-button>
-                  </div>
-                </div>
-                <div class="card-content">
-                  <div class="config-item">
-                    <span class="label">Base URL:</span>
-                    <span class="value">{{ config.baseUrl }}</span>
-                  </div>
-                  <div class="config-item">
-                    <span class="label">模型:</span>
-                    <span class="value">{{ config.model }}</span>
-                  </div>
-                  <div class="config-item">
-                    <span class="label">API Key:</span>
-                    <span class="value">{{ maskApiKey(config.apiKey) }}</span>
-                  </div>
-                  <div v-if="config.description" class="config-item">
-                    <span class="label">描述:</span>
-                    <span class="value">{{ config.description }}</span>
-                  </div>
-                </div>
-                <div class="card-footer">
-                  <el-button 
-                    type="primary" 
-                    plain 
-                    size="small"
-                    :loading="testingConfigId === config.id"
-                    @click="handleTestConnection(config.id)"
-                  >
-                    <el-icon><Connection /></el-icon>
-                    测试连接
-                  </el-button>
-                </div>
+            <div v-if="globalAIConfig?.enable_default_ai" class="flex items-center space-x-8 px-6 border-l border-zinc-100 dark:border-zinc-800">
+              <div class="flex flex-col">
+                <span class="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Endpoint</span>
+                <span class="text-xs font-mono font-bold text-zinc-700 dark:text-zinc-300 truncate max-w-[200px]">{{ globalAIConfig.default_ai_base_url }}</span>
               </div>
             </div>
           </div>
+        </section>
 
-          <!-- 默认参数配置 -->
-          <div class="default-params-section">
-            <div class="section-header">
-              <h2 class="text-lg font-semibold text-gray-900">默认参数</h2>
+        <!-- Section: Personal AI Configs -->
+        <section class="space-y-6">
+          <div class="flex items-center space-x-2 px-1">
+            <div class="w-1 h-4 bg-zinc-900 dark:bg-white rounded-full"></div>
+            <h2 class="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">已连接的引擎 Nodes ({{ userOwnedConfigs.length }})</h2>
+          </div>
+
+          <div v-if="userOwnedConfigs.length === 0" class="py-20 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl flex flex-col items-center justify-center text-center">
+            <el-icon :size="48" class="text-zinc-200 mb-4"><Cpu /></el-icon>
+            <h3 class="text-zinc-900 dark:text-white font-bold tracking-tight">暂无可用推理节点</h3>
+            <p class="text-zinc-400 text-xs mt-1 mb-6">点击右上角按钮添加您的第一个 API 引擎</p>
+          </div>
+
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div 
+              v-for="config in userOwnedConfigs" 
+              :key="config.id"
+              class="group bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-subtle hover:border-zinc-400 dark:hover:border-zinc-600 transition-all duration-300"
+            >
+              <div class="flex justify-between items-start mb-6">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-700 group-hover:scale-105 transition-transform">
+                    <el-icon :size="18"><Cpu /></el-icon>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-brand-accent transition-colors">{{ config.name }}</h3>
+                    <div class="flex items-center space-x-1.5 mt-0.5">
+                      <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                      <span class="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Active</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button @click="handleEdit(config)" class="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-all"><el-icon><Edit /></el-icon></button>
+                  <button @click="handleDelete(config.id)" class="p-1.5 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"><el-icon><Delete /></el-icon></button>
+                </div>
+              </div>
+
+              <div class="space-y-4 mb-6">
+                <div class="flex flex-col space-y-1">
+                  <span class="text-[9px] font-black text-zinc-400 uppercase tracking-widest px-0.5">Deployment Endpoint</span>
+                  <div class="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-100 dark:border-zinc-800/50 text-xs font-mono font-bold text-zinc-600 dark:text-zinc-400 truncate">
+                    {{ config.baseUrl }}
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="flex flex-col space-y-1">
+                    <span class="text-[9px] font-black text-zinc-400 uppercase tracking-widest px-0.5">Model ID</span>
+                    <span class="text-xs font-bold text-zinc-900 dark:text-white truncate">{{ config.model }}</span>
+                  </div>
+                  <div class="flex flex-col space-y-1">
+                    <span class="text-[9px] font-black text-zinc-400 uppercase tracking-widest px-0.5">Security Key</span>
+                    <span class="text-xs font-mono font-bold text-zinc-900 dark:text-white">{{ maskApiKey(config.maskedApiKey || '') }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <button 
+                  @click="handleTestConnection(config.id)"
+                  :loading="testingConfigId === config.id"
+                  class="flex items-center space-x-2 text-[10px] font-black uppercase tracking-[0.1em] text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                >
+                  <el-icon v-if="testingConfigId !== config.id"><Connection /></el-icon>
+                  <el-icon v-else class="animate-spin"><Loading /></el-icon>
+                  <span>测试引擎连通性</span>
+                </button>
+                <div v-if="config.isDefault" class="px-2 py-0.5 rounded bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[8px] font-black uppercase tracking-tighter">Default</div>
+              </div>
             </div>
-            <el-form label-position="top">
-              <el-row :gutter="20">
-                <el-col :span="12">
-                  <el-form-item label="Temperature">
-                    <div class="slider-value">{{ configStore.temperature }}</div>
-                    <el-slider
-                      v-model="configStore.temperature"
-                      :min="0"
-                      :max="2"
-                      :step="0.1"
-                    />
+          </div>
+        </section>
+
+        <!-- Section: Inference Parameters -->
+        <section class="space-y-6">
+          <div class="flex items-center space-x-2 px-1">
+            <div class="w-1 h-4 bg-zinc-900 dark:bg-white rounded-full"></div>
+            <h2 class="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">推理运行参数 Core Parameters</h2>
+          </div>
+
+          <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 shadow-subtle">
+            <el-form label-position="top" class="studio-settings-form">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div class="space-y-8">
+                  <el-form-item label="TEMPERATURE (随机性控制)">
+                    <div class="flex justify-between items-center mb-2">
+                      <p class="text-[11px] text-zinc-500 font-medium leading-relaxed">较低的值使模型更确定，较高的值增加创意。</p>
+                      <span class="text-xs font-mono font-bold text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{{ configStore.temperature }}</span>
+                    </div>
+                    <el-slider v-model="configStore.temperature" :min="0" :max="2" :step="0.1" class="studio-slider" />
                   </el-form-item>
-                </el-col>
-                <el-col :span="12">
-                  <el-form-item label="Max Tokens">
-                    <div class="slider-value">{{ configStore.maxTokens }}</div>
-                    <el-slider
-                      v-model="configStore.maxTokens"
-                      :min="100"
-                      :max="4000"
-                      :step="100"
-                    />
+                </div>
+                <div class="space-y-8">
+                  <el-form-item label="MAX TOKENS (单次回复上限)">
+                    <div class="flex justify-between items-center mb-2">
+                      <p class="text-[11px] text-zinc-500 font-medium leading-relaxed">限制生成文本的最大长度，防止消耗过高成本。</p>
+                      <span class="text-xs font-mono font-bold text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{{ configStore.maxTokens }}</span>
+                    </div>
+                    <el-slider v-model="configStore.maxTokens" :min="100" :max="8000" :step="100" class="studio-slider" />
                   </el-form-item>
-                </el-col>
-              </el-row>
-              <el-form-item>
-                <el-button type="primary" @click="saveDefaultParams">
-                  <el-icon><Check /></el-icon>
-                  保存默认参数
+                </div>
+              </div>
+              
+              <div class="mt-10 pt-8 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+                <el-button 
+                  type="primary" 
+                  @click="saveDefaultParams"
+                  class="h-10 px-8 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold border-none shadow-premium"
+                >
+                  <el-icon class="mr-2"><Check /></el-icon>应用全局参数
                 </el-button>
-              </el-form-item>
+              </div>
             </el-form>
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
 
-    <!-- 添加/编辑 AI 配置对话框 -->
+    <!-- Unified Engine Dialog -->
     <el-dialog
       v-model="showAddDialog"
-      :title="editingConfig ? '编辑 AI 配置' : '添加 AI 配置'"
+      :title="editingConfig ? '编辑推理节点' : '连接新节点'"
       width="600px"
+      class="studio-dark-dialog"
     >
-      <el-form :model="formData" label-position="top">
-        <el-form-item label="配置名称" required>
-          <el-input
-            v-model="formData.name"
-            placeholder="例如：OpenAI GPT-4"
-          />
+      <el-form :model="formData" label-position="top" class="p-2 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <el-form-item label="节点名称 NAME">
+            <el-input v-model="formData.name" placeholder="例如：OpenAI 生产节点" class="studio-input-minimal" />
+          </el-form-item>
+          <el-form-item label="模型 ID MODEL">
+            <el-select v-model="formData.model" filterable allow-create class="studio-select-minimal w-full">
+              <el-option v-for="m in configStore.availableModels" :key="m.id" :label="m.name" :value="m.id" />
+            </el-select>
+          </el-form-item>
+        </div>
+
+        <el-form-item label="API BASE URL">
+          <el-input v-model="formData.baseUrl" placeholder="https://api.openai.com/v1" class="studio-input-minimal" />
         </el-form-item>
 
-        <el-form-item label="API Base URL" required>
-          <el-input
-            v-model="formData.baseUrl"
-            placeholder="https://api.openai.com/v1"
-          />
+        <el-form-item label="引擎密钥 AUTH KEY">
+          <el-input v-model="formData.apiKey" type="password" placeholder="sk-..." show-password class="studio-input-minimal" />
         </el-form-item>
 
-        <el-form-item label="API Key" required>
-          <el-input
-            v-model="formData.apiKey"
-            type="password"
-            placeholder="sk-..."
-            show-password
-          />
-        </el-form-item>
-
-        <el-form-item label="默认模型" required>
-          <el-select 
-            v-model="formData.model"
-            filterable
-            allow-create
-            placeholder="选择或输入模型 ID"
-          >
-            <el-option
-              v-for="model in configStore.availableModels"
-              :key="model.id"
-              :label="model.name"
-              :value="model.id"
-            />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="描述">
-          <el-input
-            v-model="formData.description"
-            type="textarea"
-            :rows="2"
-            placeholder="简单描述这个 AI 配置"
-          />
+        <el-form-item label="备注说明 DESCRIPTION (OPTIONAL)">
+          <el-input v-model="formData.description" type="textarea" :rows="2" class="studio-textarea-minimal" />
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <div class="dialog-footer">
-          <div class="left-actions">
-            <el-button 
-              plain
-              :loading="testing"
-              @click="handleTestInDialog"
-            >
-              <el-icon><Connection /></el-icon>
-              测试连接
-            </el-button>
-          </div>
-          <div class="right-actions">
-            <el-button @click="showAddDialog = false">取消</el-button>
-            <el-button type="primary" @click="handleSave" :loading="saving">
-              {{ editingConfig ? '保存' : '添加' }}
+        <div class="flex items-center justify-between w-full px-2">
+          <button @click="handleTestInDialog" :loading="testing" class="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 transition-colors">
+            引擎自检 Test Connection
+          </button>
+          <div class="flex space-x-3">
+            <el-button @click="showAddDialog = false" class="rounded-lg h-10 px-6 border-zinc-200">取消</el-button>
+            <el-button type="primary" @click="handleSave" :loading="saving" class="rounded-lg h-10 px-10 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold border-none">
+              {{ editingConfig ? '同步配置' : '建立连接' }}
             </el-button>
           </div>
         </div>
@@ -252,7 +227,7 @@ import { useRouter } from 'vue-router'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Cpu, Check, Connection, Setting, InfoFilled } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Cpu, Check, Connection, Setting, Loading } from '@element-plus/icons-vue'
 import Header from '@/components/Layout/Header.vue'
 import type { AIConfig } from '@/store/config'
 import { aiConfigAPI, systemAPI } from '@/api'
@@ -261,455 +236,95 @@ const router = useRouter()
 const configStore = useConfigStore()
 const userStore = useUserStore()
 
-// 全局AI配置
 const globalAIConfig = ref<any>(null)
-
 const showAddDialog = ref(false)
 const editingConfig = ref<AIConfig | null>(null)
 const saving = ref(false)
-const loading = ref(false)
 const testing = ref(false)
 const testingConfigId = ref<number | null>(null)
 
-// 过滤出用户自己的配置（排除全局配置）
-const userOwnedConfigs = computed(() => {
-  return configStore.aiConfigs.filter(config => !config.isGlobal)
-})
-
-const formData = reactive({
-  name: '',
-  baseUrl: 'https://api.openai.com/v1',
-  apiKey: '',
-  model: 'gpt-3.5-turbo',
-  description: ''
-})
+const userOwnedConfigs = computed(() => configStore.aiConfigs.filter(config => !config.isGlobal))
+const formData = reactive({ name: '', baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-3.5-turbo', description: '' })
 
 onMounted(async () => {
-  loading.value = true
-  try {
-    await configStore.loadAIConfigs()
-    
-    // 如果是管理员，加载全局AI配置
-    if (userStore.userInfo?.role === 'admin') {
-      await loadGlobalAIConfig()
-    }
-  } finally {
-    loading.value = false
-  }
+  await configStore.loadAIConfigs()
+  if (userStore.userInfo?.role === 'admin') await loadGlobalAIConfig()
 })
 
-// 加载全局AI配置
 async function loadGlobalAIConfig() {
-  try {
-    const response = await systemAPI.getGlobalAIConfig()
-    // 响应拦截器返回的格式是 { data: ..., message: ... }
-    globalAIConfig.value = response.data
-      } catch (error) {
-    console.error('加载全局AI配置失败:', error)
-  }
+  try { const res = await systemAPI.getGlobalAIConfig(); globalAIConfig.value = res.data } catch {}
 }
 
-// 导航到全局配置页面
-function navigateToGlobalConfig() {
-  router.push('/admin/global-ai-config')
-}
-
-function maskApiKey(apiKey: string): string {
-  if (!apiKey) return ''
-  if (apiKey.length <= 8) return '***'
-  return apiKey.substring(0, 7) + '...' + apiKey.substring(apiKey.length - 4)
-}
+const navigateToGlobalConfig = () => router.push('/admin/global-ai-config')
+const maskApiKey = (key: string) => key.length <= 8 ? '***' : key.substring(0, 4) + '...' + key.substring(key.length - 4)
 
 function handleEdit(config: AIConfig) {
   editingConfig.value = config
-  formData.name = config.name
-  formData.baseUrl = config.baseUrl
-  formData.apiKey = config.apiKey
-  formData.model = config.model
-  formData.description = config.description || ''
+  Object.assign(formData, { name: config.name, baseUrl: config.baseUrl, apiKey: config.apiKey, model: config.model, description: config.description || '' })
   showAddDialog.value = true
 }
 
 async function handleDelete(id: number) {
   try {
-    await ElMessageBox.confirm('确定要删除这个 AI 配置吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-
+    await ElMessageBox.confirm('确定要删除这个节点连接吗？已保存的相关数据将失效。', '移除确认', { type: 'warning' })
     await configStore.deleteAIConfig(id)
-    ElMessage.success('删除成功')
-  } catch {
-    // 用户取消
-  }
+    ElMessage.success('已断开连接')
+  } catch {}
 }
 
 async function handleSave() {
-  if (!formData.name || !formData.baseUrl || !formData.apiKey || !formData.model) {
-    ElMessage.warning('请填写所有必填项')
-    return
-  }
-
+  if (!formData.name || !formData.baseUrl || !formData.apiKey) { ElMessage.warning('必填项不能为空'); return }
   saving.value = true
   try {
-    if (editingConfig.value) {
-      // 更新
-      await configStore.updateAIConfig(editingConfig.value.id, {
-        name: formData.name,
-        baseUrl: formData.baseUrl,
-        apiKey: formData.apiKey,
-        model: formData.model,
-        description: formData.description
-      })
-      ElMessage.success('更新成功')
-    } else {
-      // 新增
-      await configStore.addAIConfig({
-        name: formData.name,
-        baseUrl: formData.baseUrl,
-        apiKey: formData.apiKey,
-        model: formData.model,
-        description: formData.description
-      })
-      ElMessage.success('添加成功')
-    }
-
-    showAddDialog.value = false
-    resetForm()
-  } catch (error) {
-    ElMessage.error('操作失败')
-  } finally {
-    saving.value = false
-  }
+    if (editingConfig.value) await configStore.updateAIConfig(editingConfig.value.id, formData)
+    else await configStore.addAIConfig(formData)
+    ElMessage.success('配置已就绪')
+    showAddDialog.value = false; resetForm()
+  } finally { saving.value = false }
 }
 
-function resetForm() {
-  editingConfig.value = null
-  formData.name = ''
-  formData.baseUrl = 'https://api.openai.com/v1'
-  formData.apiKey = ''
-  formData.model = 'gpt-3.5-turbo'
-  formData.description = ''
-}
+const resetForm = () => { editingConfig.value = null; Object.assign(formData, { name: '', baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-3.5-turbo', description: '' }) }
+const saveDefaultParams = () => { configStore.saveDefaultParams(); ElMessage.success('参数已应用到全局') }
 
-function saveDefaultParams() {
-  configStore.saveDefaultParams()
-  ElMessage.success('保存成功')
-}
-
-async function handleTestConnection(configId: number) {
-  testingConfigId.value = configId
-  
-  try {
-    const response = await aiConfigAPI.test(configId) as any
-    
-    // axios 拦截器已经处理了 code === 0 的判断
-    // 如果到达这里，说明测试成功
-    ElMessage.success({
-      message: response.message || '连接测试成功',
-      duration: 3000
-    })
-  } catch (error: any) {
-    // axios 拦截器已经显示了错误消息
-    // 这里只需要记录日志
-    console.error('测试连接失败:', error)
-  } finally {
-    testingConfigId.value = null
-  }
+async function handleTestConnection(id: number) {
+  testingConfigId.value = id
+  try { await aiConfigAPI.test(id); ElMessage.success('连接链路正常') } finally { testingConfigId.value = null }
 }
 
 async function handleTestInDialog() {
-  // 验证必填字段
-  if (!formData.name || !formData.baseUrl || !formData.apiKey || !formData.model) {
-    ElMessage.warning('请先填写所有必填项（配置名称、Base URL、API Key、模型）')
-    return
-  }
-
+  if (!formData.apiKey) return
   testing.value = true
-  
-  try {
-    const response = await aiConfigAPI.testConnection({
-      name: formData.name,
-      base_url: formData.baseUrl,
-      api_key: formData.apiKey,
-      model: formData.model,
-      description: formData.description
-    }) as any
-    
-    // axios 拦截器已经处理了 code === 0 的判断
-    // 如果到达这里，说明测试成功
-    ElMessage.success({
-      message: response.message || '连接测试成功！配置正确，可以保存',
-      duration: 3000
-    })
-  } catch (error: any) {
-    // axios 拦截器已经显示了错误消息
-    // 这里只需要记录日志
-    console.error('测试连接失败:', error)
-  } finally {
-    testing.value = false
-  }
+  try { 
+    await aiConfigAPI.testConnection({ name: formData.name, base_url: formData.baseUrl, api_key: formData.apiKey, model: formData.model, description: formData.description })
+    ElMessage.success('测试成功，节点可用')
+  } finally { testing.value = false }
 }
 </script>
 
 <style scoped>
-.settings-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+.studio-settings-form :deep(.el-form-item__label) {
+  @apply text-[10px] font-black uppercase tracking-[0.2em] text-zinc-900 dark:text-white mb-4;
 }
 
-.content-container {
-  flex: 1;
-  overflow: hidden;
+.studio-input-minimal :deep(.el-input__wrapper), 
+.studio-select-minimal :deep(.el-input__wrapper) {
+  @apply bg-transparent !shadow-none border border-zinc-200 dark:border-zinc-800 rounded-lg h-10 px-3 transition-all hover:border-zinc-400 focus:border-zinc-900 dark:focus:border-zinc-100;
 }
 
-.main-content {
-  height: 100%;
-  overflow-y: auto;
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
+.studio-textarea-minimal :deep(.el-textarea__inner) {
+  @apply bg-transparent !shadow-none border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 transition-all hover:border-zinc-400 focus:border-zinc-900 dark:focus:border-zinc-100 text-sm leading-relaxed;
 }
 
-.main-content::-webkit-scrollbar {
-  width: 10px;
+:deep(.studio-slider.el-slider) {
+  --el-slider-main-bg-color: #0f172a;
+  --el-slider-runway-bg-color: #f1f5f9;
+  --el-slider-stop-bg-color: #0f172a;
 }
 
-.main-content::-webkit-scrollbar-track {
-  background: #f1f5f9;
+.dark :deep(.studio-slider.el-slider) {
+  --el-slider-main-bg-color: #ffffff;
+  --el-slider-runway-bg-color: #1e293b;
 }
 
-.main-content::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
-  border-radius: 5px;
-}
-
-.main-content::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
-}
-
-.page-header {
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.settings-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding-bottom: 2rem;
-}
-
-.global-ai-section,
-.ai-configs-section,
-.default-params-section {
-  background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  border: 1px solid #e5e7eb;
-}
-
-.global-ai-section {
-  margin-bottom: 1.5rem;
-}
-
-.global-config-card {
-  margin-top: 1rem;
-  border: 1px solid #e5e7eb;
-}
-
-.global-config-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.config-status {
-  display: flex;
-  align-items: center;
-}
-
-.config-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 0.75rem;
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 6px;
-}
-
-.detail-item {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.detail-item .label {
-  font-weight: 500;
-  color: #6b7280;
-  min-width: 80px;
-  font-size: 0.875rem;
-}
-
-.detail-item .value {
-  color: #1f2937;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 0.875rem;
-}
-
-.config-hint {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: #f3f4f6;
-  border-radius: 6px;
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.empty-state {
-  padding: 3rem;
-  text-align: center;
-}
-
-.ai-configs-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.25rem;
-}
-
-.ai-config-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1.25rem;
-  transition: all 0.2s;
-  background: white;
-}
-
-.ai-config-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
-  transform: translateY(-2px);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.card-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.card-title .el-icon {
-  font-size: 1.25rem;
-  color: #3b82f6;
-}
-
-.card-title h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-.card-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.card-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.card-footer {
-  padding-top: 0.75rem;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.config-item {
-  display: flex;
-  gap: 0.75rem;
-  padding: 0.25rem 0;
-}
-
-.config-item .label {
-  font-weight: 500;
-  color: #6b7280;
-  min-width: 90px;
-  font-size: 0.875rem;
-}
-
-.config-item .value {
-  color: #1f2937;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 0.875rem;
-  word-break: break-all;
-  flex: 1;
-}
-
-.slider-value {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #3b82f6;
-  text-align: center;
-  margin-bottom: 0.5rem;
-}
-
-:deep(.el-form-item__label) {
-  font-weight: 500;
-  color: #6b7280;
-}
-
-:deep(.el-select) {
-  width: 100%;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.left-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.right-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* 响应式 */
-@media (max-width: 768px) {
-  .ai-configs-list {
-    grid-template-columns: 1fr;
-  }
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 </style>
-

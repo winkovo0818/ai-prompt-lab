@@ -45,7 +45,6 @@ html, body {
   color: var(--text-main);
   font-family: var(--el-font-family);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
   letter-spacing: -0.01em;
 }
 
@@ -126,20 +125,21 @@ html, body {
   background: var(--bg-sidebar);
 }
 
-/* Message Box Refinement */
-.carbon-message-box {
-  border-radius: 16px !important;
-  padding: 4px !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
+/* Premium Studio Dropdown Refinement */
+.studio-dropdown-premium {
+  @apply rounded-2xl border-none shadow-modal p-1.5 min-w-[140px] bg-white dark:bg-zinc-800 !important;
 }
 
-.carbon-message-box .el-message-box__header {
-  padding: 20px 24px 8px !important;
+.studio-dropdown-premium .el-dropdown-menu__item {
+  @apply rounded-xl px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-zinc-700 transition-all !important;
 }
 
-.carbon-message-box .el-message-box__btns {
-  padding: 12px 24px 24px !important;
+.studio-dropdown-premium .el-dropdown-menu__item.text-danger {
+  @apply text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 !important;
+}
+
+.studio-dropdown-premium .el-dropdown-menu__item--divided {
+  @apply border-zinc-100 dark:border-zinc-700 !important;
 }
 
 /* Tabs Styling (Clean Capsule) */

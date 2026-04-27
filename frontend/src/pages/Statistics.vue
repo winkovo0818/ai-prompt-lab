@@ -1,143 +1,134 @@
 <template>
-  <div class="statistics-page">
+  <div class="statistics-page min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col overflow-hidden">
     <Header />
     
-    <div class="page-content">
-      <div class="page-header">
-        <h1>使用统计</h1>
-        <div class="header-actions">
-          <el-select v-model="selectedDays" @change="loadAllData" style="width: 140px">
-            <el-option :value="7" label="最近 7 天" />
-            <el-option :value="14" label="最近 14 天" />
-            <el-option :value="30" label="最近 30 天" />
-            <el-option :value="90" label="最近 90 天" />
-          </el-select>
-          <el-button @click="loadAllData" :loading="loading">
-            <el-icon><Refresh /></el-icon>
-            刷新
-          </el-button>
-        </div>
-      </div>
-
-      <!-- 概览卡片 -->
-      <div class="overview-cards" v-loading="loading">
-        <div class="stat-card">
-          <div class="stat-icon calls">
-            <el-icon><Connection /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ formatNumber(overview.total_calls) }}</div>
-            <div class="stat-label">API 调用次数</div>
-          </div>
-        </div>
+    <main class="flex-1 overflow-y-auto scrollbar-hide py-12 px-6">
+      <div class="max-w-[1400px] mx-auto space-y-12">
         
-        <div class="stat-card">
-          <div class="stat-icon tokens">
-            <el-icon><Coin /></el-icon>
+        <!-- Page Header -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 px-1">
+          <div class="space-y-1">
+            <h1 class="text-2xl font-black text-zinc-900 dark:text-white tracking-tight uppercase">使用洞察 Insights</h1>
+            <p class="text-zinc-500 text-sm font-medium">全维度分析 API 调用、Token 消耗及成本分布</p>
           </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ formatNumber(overview.total_tokens) }}</div>
-            <div class="stat-label">Token 消耗</div>
+          <div class="flex items-center space-x-3">
+            <el-select v-model="selectedDays" @change="loadAllData" class="studio-select-minimal w-40">
+              <el-option :value="7" label="最近 7 天" />
+              <el-option :value="14" label="最近 14 天" />
+              <el-option :value="30" label="最近 30 天" />
+              <el-option :value="90" label="最近 90 天" />
+            </el-select>
+            <button @click="loadAllData" :class="{ 'animate-spin': loading }" class="p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all">
+              <el-icon><Refresh /></el-icon>
+            </button>
           </div>
         </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon cost">
-            <el-icon><Money /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">${{ overview.total_cost.toFixed(4) }}</div>
-            <div class="stat-label">预估成本</div>
+
+        <!-- Overview Cards: Redesigned for High Signal -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6" v-loading="loading">
+          <div v-for="card in overviewCards" :key="card.label" class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-subtle flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{{ card.label }}</span>
+              <div class="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+                <el-icon :size="16"><component :is="card.icon" /></el-icon>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">{{ card.value }}</h2>
+              <p class="text-[10px] text-zinc-400 font-medium">{{ card.desc }}</p>
+            </div>
           </div>
         </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon time">
-            <el-icon><Timer /></el-icon>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Main Trend Chart -->
+          <div class="lg:col-span-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 shadow-subtle">
+            <div class="flex items-center justify-between mb-8">
+              <div class="flex items-center space-x-2">
+                <div class="w-1 h-4 bg-zinc-900 dark:bg-white rounded-full"></div>
+                <h3 class="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">调用趋势 Time Series</h3>
+              </div>
+              <div class="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                <button 
+                  v-for="t in [{v:'calls',l:'次数'}, {v:'tokens',l:'TOKENS'}, {v:'cost',l:'成本'}]" 
+                  :key="t.v"
+                  @click="dailyChartType = t.v as any"
+                  class="px-3 py-1 text-[9px] font-black uppercase rounded transition-all"
+                  :class="dailyChartType === t.v ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'"
+                >
+                  {{ t.l }}
+                </button>
+              </div>
+            </div>
+            <div class="h-[340px]" ref="dailyChartRef"></div>
           </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ overview.avg_response_time.toFixed(2) }}s</div>
-            <div class="stat-label">平均响应时间</div>
+
+          <!-- Distribution Chart -->
+          <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 shadow-subtle">
+            <div class="flex items-center space-x-2 mb-8">
+              <div class="w-1 h-4 bg-zinc-900 dark:bg-white rounded-full"></div>
+              <h3 class="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">模型分布 Models</h3>
+            </div>
+            <div class="h-[340px]" ref="modelChartRef"></div>
           </div>
+
+          <!-- Hourly Distribution -->
+          <div class="lg:col-span-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 shadow-subtle">
+            <div class="flex items-center space-x-2 mb-8">
+              <div class="w-1 h-4 bg-zinc-900 dark:bg-white rounded-full"></div>
+              <h3 class="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">24小时活动周期 Hourly Activity</h3>
+            </div>
+            <div class="h-[240px]" ref="hourlyChartRef"></div>
+          </div>
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-subtle">
+          <div class="p-8 border-b border-zinc-100 dark:border-zinc-800">
+            <div class="flex items-center space-x-2">
+              <div class="w-1 h-4 bg-zinc-900 dark:bg-white rounded-full"></div>
+              <h3 class="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">热点提示词排行 Top Prompts</h3>
+            </div>
+          </div>
+          <el-table :data="topPrompts" v-loading="loading" class="studio-table">
+            <el-table-column prop="title" label="提示词标题 PROMPT TITLE" min-width="300">
+              <template #default="{ row }">
+                <router-link :to="`/editor/${row.prompt_id}`" class="text-xs font-bold text-zinc-800 dark:text-zinc-200 hover:text-brand-accent transition-colors">
+                  {{ row.title }}
+                </router-link>
+              </template>
+            </el-table-column>
+            <el-table-column prop="use_count" label="使用频率 USAGE" align="right">
+              <template #default="{ row }">
+                <span class="text-xs font-mono font-bold text-zinc-900 dark:text-white">{{ row.use_count }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_tokens" label="累计消耗 TOKENS" align="right">
+              <template #default="{ row }">
+                <span class="text-xs font-mono text-zinc-500">{{ formatNumber(row.total_tokens) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_cost" label="预估支出 COST" align="right">
+              <template #default="{ row }">
+                <span class="text-xs font-mono text-zinc-900 dark:text-white font-bold">${{ row.total_cost.toFixed(4) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="avg_response_time" label="平均延迟 LATENCY" align="right">
+              <template #default="{ row }">
+                <span class="text-xs font-mono text-zinc-500">{{ row.avg_response_time.toFixed(2) }}s</span>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
       </div>
-
-      <!-- 图表区域 -->
-      <div class="charts-section">
-        <!-- 每日趋势图 -->
-        <div class="chart-card large">
-          <div class="chart-header">
-            <h3>每日调用趋势</h3>
-            <el-radio-group v-model="dailyChartType" size="small">
-              <el-radio-button value="calls">调用量</el-radio-button>
-              <el-radio-button value="tokens">Token</el-radio-button>
-              <el-radio-button value="cost">成本</el-radio-button>
-            </el-radio-group>
-          </div>
-          <div class="chart-container" ref="dailyChartRef"></div>
-        </div>
-
-        <!-- 模型使用分布 -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>模型使用分布</h3>
-          </div>
-          <div class="chart-container" ref="modelChartRef"></div>
-        </div>
-
-        <!-- 每小时调用分布 -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>24 小时调用分布</h3>
-          </div>
-          <div class="chart-container" ref="hourlyChartRef"></div>
-        </div>
-      </div>
-
-      <!-- 最常用 Prompt -->
-      <div class="top-prompts-section">
-        <div class="section-header">
-          <h3>最常用的 Prompt</h3>
-        </div>
-        <el-table :data="topPrompts" v-loading="loading" stripe>
-          <el-table-column prop="title" label="Prompt 标题" min-width="200">
-            <template #default="{ row }">
-              <router-link :to="`/editor/${row.prompt_id}`" class="prompt-link">
-                {{ row.title }}
-              </router-link>
-            </template>
-          </el-table-column>
-          <el-table-column prop="use_count" label="使用次数" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag type="primary">{{ row.use_count }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="total_tokens" label="Token 消耗" width="120" align="right">
-            <template #default="{ row }">
-              {{ formatNumber(row.total_tokens) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="total_cost" label="成本" width="100" align="right">
-            <template #default="{ row }">
-              ${{ row.total_cost.toFixed(4) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="avg_response_time" label="平均响应" width="120" align="right">
-            <template #default="{ row }">
-              {{ row.avg_response_time.toFixed(2) }}s
-            </template>
-          </el-table-column>
-        </el-table>
-        <el-empty v-if="!loading && topPrompts.length === 0" description="暂无使用记录" />
-      </div>
-    </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { statisticsAPI, DailyStats, TopPrompt, ModelUsage } from '@/api'
-import { ElMessage } from 'element-plus'
 import { Refresh, Connection, Coin, Money, Timer } from '@element-plus/icons-vue'
 import Header from '@/components/Layout/Header.vue'
 import * as echarts from 'echarts'
@@ -146,469 +137,134 @@ const selectedDays = ref(30)
 const loading = ref(false)
 const dailyChartType = ref<'calls' | 'tokens' | 'cost'>('calls')
 
-const overview = reactive({
-  total_calls: 0,
-  total_tokens: 0,
-  total_input_tokens: 0,
-  total_output_tokens: 0,
-  total_cost: 0,
-  avg_response_time: 0
-})
-
+const overview = reactive({ total_calls: 0, total_tokens: 0, total_input_tokens: 0, total_output_tokens: 0, total_cost: 0, avg_response_time: 0 })
 const dailyStats = ref<DailyStats[]>([])
 const topPrompts = ref<TopPrompt[]>([])
 const modelUsage = ref<ModelUsage[]>([])
 const hourlyData = ref<{ hours: number[]; calls: number[] }>({ hours: [], calls: [] })
 
-// 图表引用
-const dailyChartRef = ref<HTMLElement>()
-const modelChartRef = ref<HTMLElement>()
-const hourlyChartRef = ref<HTMLElement>()
+const dailyChartRef = ref<HTMLElement>(); const modelChartRef = ref<HTMLElement>(); const hourlyChartRef = ref<HTMLElement>()
+let dailyChart: echarts.ECharts | null = null; let modelChart: echarts.ECharts | null = null; let hourlyChart: echarts.ECharts | null = null
 
-let dailyChart: echarts.ECharts | null = null
-let modelChart: echarts.ECharts | null = null
-let hourlyChart: echarts.ECharts | null = null
+const overviewCards = computed(() => [
+  { label: 'Total Calls', value: formatNumber(overview.total_calls), desc: '累计成功执行次数', icon: 'Connection' },
+  { label: 'Token Consumption', value: formatNumber(overview.total_tokens), desc: '已消耗计算资源', icon: 'Coin' },
+  { label: 'Projected Cost', value: `$${overview.total_cost.toFixed(2)}`, desc: '预估模型推理成本', icon: 'Money' },
+  { label: 'Avg Latency', value: `${overview.avg_response_time.toFixed(2)}s`, desc: '模型端到端响应时间', icon: 'Timer' }
+])
 
-// 格式化数字
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K'
-  }
-  return num.toString()
-}
+function formatNumber(num: number) { return num >= 1000000 ? (num / 1000000).toFixed(1) + 'M' : (num >= 1000 ? (num / 1000).toFixed(1) + 'K' : num.toString()) }
 
-// 加载所有数据
 async function loadAllData() {
   loading.value = true
   try {
-    await Promise.all([
-      loadOverview(),
-      loadDailyStats(),
-      loadTopPrompts(),
-      loadModelUsage(),
-      loadHourlyStats()
+    const [ov, ds, tp, mu, hr] = await Promise.all([
+      statisticsAPI.getOverview(selectedDays.value) as any,
+      statisticsAPI.getDaily(selectedDays.value) as any,
+      statisticsAPI.getTopPrompts({ days: selectedDays.value, limit: 10 }) as any,
+      statisticsAPI.getModelUsage(selectedDays.value) as any,
+      statisticsAPI.getHourly(Math.min(selectedDays.value, 30)) as any
     ])
-  } catch (error) {
-    console.error('加载统计数据失败:', error)
-  } finally {
-    loading.value = false
+    if (ov.data) Object.assign(overview, ov.data)
+    dailyStats.value = ds.data || []; topPrompts.value = tp.data || []; modelUsage.value = mu.data || []; hourlyData.value = hr.data || { hours: [], calls: [] }
+    await nextTick(); renderCharts()
+  } finally { loading.value = false }
+}
+
+function getChartTheme() {
+  const isDark = document.documentElement.classList.contains('dark')
+  return {
+    text: isDark ? '#94a3b8' : '#64748b',
+    border: isDark ? '#1e293b' : '#f1f5f9',
+    accent: isDark ? '#ffffff' : '#0f172a',
+    grid: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
   }
 }
 
-async function loadOverview() {
-  const response = await statisticsAPI.getOverview(selectedDays.value) as any
-  if (response.data) {
-    Object.assign(overview, response.data)
+function renderCharts() {
+  const theme = getChartTheme()
+  
+  // Daily Chart
+  if (dailyChartRef.value) {
+    dailyChart = dailyChart || echarts.init(dailyChartRef.value)
+    dailyChart.setOption({
+      tooltip: { trigger: 'axis', backgroundColor: '#0f172a', textStyle: { color: '#fff' }, borderWidth: 0, shadowBlur: 10 },
+      grid: { left: '2%', right: '2%', bottom: '5%', top: '10%', containLabel: true },
+      xAxis: { type: 'category', boundaryGap: false, data: dailyStats.value.map(d => d.date.slice(5)), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: theme.text, fontSize: 10, margin: 15 } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: theme.grid } }, axisLabel: { color: theme.text, fontSize: 10 } },
+      series: [{
+        type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
+        itemStyle: { color: theme.accent },
+        lineStyle: { width: 3 },
+        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: theme.accent + '22' }, { offset: 1, color: theme.accent + '00' }]) },
+        data: dailyStats.value.map(d => d[dailyChartType.value as keyof DailyStats])
+      }]
+    })
+  }
+
+  // Model Distribution
+  if (modelChartRef.value) {
+    modelChart = modelChart || echarts.init(modelChartRef.value)
+    modelChart.setOption({
+      tooltip: { trigger: 'item' },
+      series: [{
+        type: 'pie', radius: ['60%', '85%'], center: ['50%', '50%'],
+        avoidLabelOverlap: false,
+        itemStyle: { borderRadius: 4, borderColor: theme.border, borderWidth: 2 },
+        label: { show: false },
+        emphasis: { label: { show: true, fontSize: 12, fontWeight: 'bold', color: theme.accent } },
+        data: modelUsage.value.map(m => ({ name: m.model, value: m.calls }))
+      }],
+      color: [theme.accent, '#3b82f6', '#10b981', '#f59e0b', '#6366f1']
+    })
+  }
+
+  // Hourly Activity
+  if (hourlyChartRef.value) {
+    hourlyChart = hourlyChart || echarts.init(hourlyChartRef.value)
+    hourlyChart.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: '2%', right: '2%', bottom: '5%', top: '15%', containLabel: true },
+      xAxis: { type: 'category', data: hourlyData.value.hours.map(h => `${h}h`), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: theme.text, fontSize: 9 } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: theme.grid } }, axisLabel: { color: theme.text, fontSize: 9 } },
+      series: [{
+        type: 'bar', barWidth: '60%', itemStyle: { color: theme.accent, borderRadius: [4, 4, 0, 0] },
+        data: hourlyData.value.calls
+      }]
+    })
   }
 }
 
-async function loadDailyStats() {
-  const response = await statisticsAPI.getDaily(selectedDays.value) as any
-  if (response.data) {
-    dailyStats.value = response.data
-    await nextTick()
-    renderDailyChart()
-  }
-}
+watch(dailyChartType, () => renderCharts())
+function handleResize() { dailyChart?.resize(); modelChart?.resize(); hourlyChart?.resize() }
 
-async function loadTopPrompts() {
-  const response = await statisticsAPI.getTopPrompts({ 
-    days: selectedDays.value, 
-    limit: 10 
-  }) as any
-  if (response.data) {
-    topPrompts.value = response.data
-  }
-}
-
-async function loadModelUsage() {
-  const response = await statisticsAPI.getModelUsage(selectedDays.value) as any
-  if (response.data) {
-    modelUsage.value = response.data
-    await nextTick()
-    renderModelChart()
-  }
-}
-
-async function loadHourlyStats() {
-  const response = await statisticsAPI.getHourly(Math.min(selectedDays.value, 30)) as any
-  if (response.data) {
-    hourlyData.value = response.data
-    await nextTick()
-    renderHourlyChart()
-  }
-}
-
-// 渲染每日趋势图
-function renderDailyChart() {
-  if (!dailyChartRef.value) return
-  
-  if (!dailyChart) {
-    dailyChart = echarts.init(dailyChartRef.value)
-  }
-  
-  const dataKey = dailyChartType.value
-  const labelMap: Record<string, string> = {
-    calls: '调用次数',
-    tokens: 'Token 消耗',
-    cost: '成本 ($)'
-  }
-  
-  const option: echarts.EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'cross' }
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: dailyStats.value.map(d => d.date),
-      axisLabel: {
-        formatter: (value: string) => value.slice(5) // 只显示月-日
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: labelMap[dataKey]
-    },
-    series: [{
-      name: labelMap[dataKey],
-      type: 'line',
-      smooth: true,
-      areaStyle: {
-        opacity: 0.3
-      },
-      data: dailyStats.value.map(d => d[dataKey as keyof DailyStats]),
-      itemStyle: {
-        color: dataKey === 'calls' ? '#409eff' : dataKey === 'tokens' ? '#67c23a' : '#e6a23c'
-      }
-    }]
-  }
-  
-  dailyChart.setOption(option)
-}
-
-// 渲染模型使用分布图
-function renderModelChart() {
-  if (!modelChartRef.value) return
-  
-  if (!modelChart) {
-    modelChart = echarts.init(modelChartRef.value)
-  }
-  
-  const option: echarts.EChartsOption = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left',
-      top: 'center'
-    },
-    series: [{
-      type: 'pie',
-      radius: ['40%', '70%'],
-      center: ['60%', '50%'],
-      avoidLabelOverlap: false,
-      itemStyle: {
-        borderRadius: 10,
-        borderColor: '#fff',
-        borderWidth: 2
-      },
-      label: {
-        show: false
-      },
-      emphasis: {
-        label: {
-          show: true,
-          fontSize: 14,
-          fontWeight: 'bold'
-        }
-      },
-      data: modelUsage.value.map(m => ({
-        name: m.model,
-        value: m.calls
-      }))
-    }]
-  }
-  
-  modelChart.setOption(option)
-}
-
-// 渲染每小时分布图
-function renderHourlyChart() {
-  if (!hourlyChartRef.value) return
-  
-  if (!hourlyChart) {
-    hourlyChart = echarts.init(hourlyChartRef.value)
-  }
-  
-  const option: echarts.EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      formatter: '{b}:00 - {c} 次调用'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: hourlyData.value.hours.map(h => `${h}:00`),
-      axisLabel: {
-        interval: 2
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '调用次数'
-    },
-    series: [{
-      type: 'bar',
-      data: hourlyData.value.calls,
-      itemStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: '#83bff6' },
-          { offset: 0.5, color: '#188df0' },
-          { offset: 1, color: '#188df0' }
-        ])
-      }
-    }]
-  }
-  
-  hourlyChart.setOption(option)
-}
-
-// 监听图表类型变化
-watch(dailyChartType, () => {
-  renderDailyChart()
-})
-
-// 窗口大小变化时重绘图表
-function handleResize() {
-  dailyChart?.resize()
-  modelChart?.resize()
-  hourlyChart?.resize()
-}
-
-onMounted(() => {
-  loadAllData()
-  window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  dailyChart?.dispose()
-  modelChart?.dispose()
-  hourlyChart?.dispose()
-})
+onMounted(() => { loadAllData(); window.addEventListener('resize', handleResize) })
+onUnmounted(() => { window.removeEventListener('resize', handleResize); dailyChart?.dispose(); modelChart?.dispose(); hourlyChart?.dispose() })
 </script>
 
 <style scoped>
-.statistics-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f5f7fa;
+.studio-select-minimal :deep(.el-input__wrapper) {
+  @apply bg-white dark:bg-zinc-900 !shadow-none border border-zinc-200 dark:border-zinc-800 rounded-lg h-10 px-3 transition-all;
 }
 
-.page-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem;
+:deep(.studio-table) {
+  --el-table-header-bg-color: transparent;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-border-color: #f1f5f9;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+.dark :deep(.studio-table) {
+  --el-table-border-color: #1e293b;
 }
 
-.page-header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #1e293b;
+:deep(.el-table th.el-table__cell) {
+  @apply text-[9px] font-black uppercase tracking-widest text-zinc-400 py-4;
 }
 
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
+:deep(.el-table td.el-table__cell) {
+  @apply py-4;
 }
 
-/* 概览卡片 */
-.overview-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.25rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-}
-
-.stat-icon.calls {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.stat-icon.tokens {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-  color: white;
-}
-
-.stat-icon.cost {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
-}
-
-.stat-icon.time {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: white;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin-top: 0.25rem;
-}
-
-/* 图表区域 */
-.charts-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.chart-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.chart-card.large {
-  grid-column: 1 / -1;
-}
-
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.chart-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  color: #1e293b;
-}
-
-.chart-container {
-  height: 280px;
-}
-
-.chart-card.large .chart-container {
-  height: 320px;
-}
-
-/* 最常用 Prompt */
-.top-prompts-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.section-header {
-  margin-bottom: 1rem;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  color: #1e293b;
-}
-
-.prompt-link {
-  color: #409eff;
-  text-decoration: none;
-}
-
-.prompt-link:hover {
-  text-decoration: underline;
-}
-
-/* 响应式 */
-@media (max-width: 1200px) {
-  .overview-cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .charts-section {
-    grid-template-columns: 1fr;
-  }
-  
-  .chart-card.large {
-    grid-column: auto;
-  }
-}
-
-@media (max-width: 768px) {
-  .overview-cards {
-    grid-template-columns: 1fr;
-  }
-  
-  .page-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 </style>
