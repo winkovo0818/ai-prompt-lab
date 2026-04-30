@@ -2,12 +2,28 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlmodel import SQLModel, Session
-from sqlalchemy import text
+from sqlmodel import SQLModel, Session, create_engine
+from sqlalchemy.pool import StaticPool
 from app.main import app
-from app.core.database import engine, get_session
+from app.core import database
+from app.core.database import get_session
 from app.core.security import get_password_hash
 from app.models.user import User
+from app.core.access_control import RateLimitMiddleware
+from app.services import test_runner_service
+
+
+test_engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+database.engine = test_engine
+test_runner_service.engine = test_engine
+for middleware in app.user_middleware:
+    if middleware.cls is RateLimitMiddleware:
+        middleware.kwargs["enabled"] = False
+app.middleware_stack = app.build_middleware_stack()
 
 pytest_plugins = ('pytest_asyncio',)
 
@@ -15,17 +31,9 @@ pytest_plugins = ('pytest_asyncio',)
 @pytest.fixture(scope="function")
 def db_session():
     """创建测试数据库会话"""
-    with engine.connect() as conn:
-        conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
-        result = conn.execute(text("SHOW TABLES"))
-        tables = [row[0] for row in result.fetchall()]
-        for table in reversed(tables):
-            conn.execute(text(f"DROP TABLE IF EXISTS `{table}`"))
-        conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
-        conn.commit()
-
-    SQLModel.metadata.create_all(engine)
-    session = Session(engine)
+    SQLModel.metadata.drop_all(test_engine)
+    SQLModel.metadata.create_all(test_engine)
+    session = Session(test_engine)
     yield session
     session.close()
 

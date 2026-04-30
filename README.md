@@ -210,6 +210,15 @@ npm run dev
 - 密码: `admin123`
 - ⚠️ 请首次登录后立即修改密码！
 
+### 后端自动化测试
+
+```bash
+cd backend
+python -m pytest tests -v --tb=short
+```
+
+后端测试使用 `pytest` + `pytest-asyncio`，测试夹具默认使用内存 SQLite 隔离数据库，并在测试环境禁用接口限流，避免依赖本地 MySQL 服务或受 429 限流影响。当前测试覆盖认证、Prompt 管理、权限隔离、管理员接口、分支/PR/diff、文件上传、统计、安全接口、测试集创建/运行等核心后端流程；AI 调用相关回归用例使用 mock，不依赖真实外部模型服务。
+
 ---
 
 ## 📸 界面预览

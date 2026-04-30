@@ -602,7 +602,7 @@ async def test_get_branches(client: AsyncClient, test_user, test_prompt):
     """测试获取分支列表"""
     token = await login_and_get_token(client, "testuser", "testpassword123")
     response = await client.get(
-        f"/prompt/{test_prompt.id}/branches",
+        f"/api/prompt/{test_prompt.id}/branches",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code in [200, 500]
@@ -613,7 +613,7 @@ async def test_get_pull_requests(client: AsyncClient, test_user, test_prompt):
     """测试获取Pull Request列表"""
     token = await login_and_get_token(client, "testuser", "testpassword123")
     response = await client.get(
-        f"/prompt/{test_prompt.id}/pull-requests",
+        f"/api/prompt/{test_prompt.id}/pull-requests",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code in [200, 500]
@@ -949,7 +949,7 @@ async def test_list_pull_requests(client: AsyncClient, test_user, test_prompt):
     """测试获取PR列表"""
     token = await login_and_get_token(client, "testuser", "testpassword123")
     response = await client.get(
-        f"/prompt/{test_prompt.id}/pull-requests",
+        f"/api/prompt/{test_prompt.id}/pull-requests",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code in [200, 500]
@@ -960,7 +960,7 @@ async def test_get_pull_request(client: AsyncClient, test_user, test_prompt):
     """测试获取PR详情"""
     token = await login_and_get_token(client, "testuser", "testpassword123")
     response = await client.get(
-        f"/prompt/{test_prompt.id}/pull-requests/1",
+        f"/api/prompt/{test_prompt.id}/pull-requests/1",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code in [200, 404, 500]
@@ -1090,7 +1090,7 @@ async def test_diff_branches(client: AsyncClient, test_user, test_prompt):
     token = await login_and_get_token(client, "testuser", "testpassword123")
     # API使用 from_commit 和 to_commit 参数
     response = await client.get(
-        f"/prompt/{test_prompt.id}/diff?from_commit=1&to_commit=2",
+        f"/api/prompt/{test_prompt.id}/diff?from_commit=1&to_commit=2",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code in [200, 404, 500]
