@@ -16,6 +16,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/winkovo0818/ai-prompt-lab?style=social)](https://github.com/winkovo0818/ai-prompt-lab)
 
 [✨ 功能特性](#-功能特性) •
+[🧭 功能地图](#-功能地图) •
 [🚀 快速开始](#-快速开始) •
 [📸 界面预览](#-界面预览) •
 [📖 文档](#-文档) •
@@ -31,11 +32,12 @@
 
 AI Prompt Lab 专为**企业团队**设计，帮助开发者和 AI 工程师：
 
-- 🎯 **高效管理** - 版本控制、标签分类、收藏夹
-- 🧪 **科学测试** - A/B 对比、批量测试、质量评估
-- 📚 **知识复用** - 模板库、团队协作、经验分享
-- 🔒 **安全可控** - API Key 加密、权限管理、审计日志
-- 👥 **团队协作** - 团队隔离、角色权限、邀请分享
+- 🎯 **高效管理** - Prompt 编辑、变量识别、标签分类、收藏夹
+- 🧪 **科学测试** - A/B 对比、批量测试、测试集回归、质量评估
+- 🌿 **版本协作** - Prompt 分支、提交历史、Diff 对比、Pull Request 合并
+- 📚 **知识复用** - 模板库、团队协作、评论评审、经验分享
+- 🔒 **安全可控** - API Key 加密、权限管理、敏感词、审计日志、配额控制
+- 📊 **持续优化** - 执行历史、Token/费用统计、模型使用分析、AI 优化建议
 
 ---
 
@@ -45,118 +47,175 @@ AI Prompt Lab 专为**企业团队**设计，帮助开发者和 AI 工程师：
 <tr>
 <td width="50%">
 
-### 📝 Prompt 管理
+### 📝 Prompt 工作台
 - ✅ 可视化编辑器，支持变量 `{{name}}`
 - ✅ Markdown 预览和代码高亮
-- ✅ 版本历史和一键回溯
-- ✅ 标签分类和全文搜索
-- ✅ 收藏夹（用户级隔离）
+- ✅ Prompt 运行、模型选择、参数配置
+- ✅ 版本历史、自动版本记录和回溯
+- ✅ 标签分类、全文搜索、收藏夹
 - ✅ 公开/私有权限控制
 
 </td>
 <td width="50%">
 
-### 🧪 A/B 测试
-- ✅ 同时对比多个 Prompt 效果
-- ✅ 响应时间和 Token 统计
-- ✅ 质量评分和反馈
-- ✅ 测试结果可视化
-- ✅ 批量测试用例
-- ✅ 历史记录追溯
+### 🧪 测试与评估
+- ✅ A/B 对比多个 Prompt 效果
+- ✅ 批量测试用例和历史记录
+- ✅ 可复用 Prompt 测试集（smoke/full）
+- ✅ 自动保存触发回归测试
+- ✅ 候选版本 vs 基线版本对比
+- ✅ 质量评分、响应时间、Token 和费用统计
 
 </td>
 </tr>
 <tr>
 <td>
 
-### 🎨 模板库
-- ✅ 20+ 精选优质模板
-- ✅ 多维度分类（文案/代码/数据等）
-- ✅ 难度分级（入门/中级/高级）
-- ✅ 一键导入到编辑器
-- ✅ 收藏和评分系统
-- ✅ 支持自定义模板
+### 🌿 Prompt Git
+- ✅ Prompt 分支管理和切换
+- ✅ 提交历史和版本快照
+- ✅ 两版本 Diff / Unified Diff 对比
+- ✅ Pull Request 创建、查看、合并、关闭
+- ✅ 分支级权限校验
+- ✅ 适合团队协作审查 Prompt 变更
 
 </td>
 <td>
 
+### 🎨 模板库
+- ✅ 精选 Prompt 模板和分类浏览
+- ✅ 难度分级、标签筛选和搜索
+- ✅ 一键从模板创建 Prompt
+- ✅ 收藏、评分和热门模板统计
+- ✅ 用户自定义模板
+- ✅ 管理员模板维护
+
+</td>
+</tr>
+<tr>
+<td>
+
 ### ⚙️ AI 配置
-- ✅ 多 AI 服务管理（OpenAI/DeepSeek/Kimi）
+- ✅ 多 AI 服务管理（OpenAI 兼容接口）
 - ✅ 全局配置（管理员统一管理）
 - ✅ 个人配置（支持多个账号）
 - ✅ API Key 加密存储
 - ✅ 连接测试功能
-- ✅ 灵活的优先级策略
+- ✅ 优先级：个人默认 > 个人配置 > 全局配置 > 环境变量
 
 </td>
-</tr>
-<tr>
 <td>
 
-### 👥 用户系统
-- ✅ JWT 认证
+### 👥 用户与团队
+- ✅ JWT 登录/注册和个人资料管理
+- ✅ 头像上传和用户搜索
 - ✅ 角色权限（管理员/普通用户）
-- ✅ 频率限制
-- ✅ 审计日志
-- ✅ 个人资料管理
-- ✅ 头像上传
-
-</td>
-<td>
-
-### 🔒 安全特性
-- ✅ API Key 加密存储
-- ✅ 敏感词过滤
-- ✅ 操作审计日志
-- ✅ 权限隔离
-- ✅ CORS 防护
+- ✅ 团队创建、成员管理、邀请码加入
+- ✅ Prompt 共享到团队
+- ✅ 团队内查看/编辑权限控制
 
 </td>
 </tr>
 <tr>
 <td>
 
-### 👨‍👩‍👧‍👦 团队协作
-- ✅ 创建/管理团队
-- ✅ 邀请码加入团队
-- ✅ Prompt 团队共享
-- ✅ 查看/编辑权限控制
-- ✅ 团队成员管理
+### 🔒 安全与治理
+- ✅ API Key Fernet 加密存储
+- ✅ 敏感词检测、脱敏和内容审计
+- ✅ 安全配置中心
+- ✅ 操作审计日志和个人审计记录
+- ✅ 跨用户/跨团队数据隔离
+- ✅ 禁用用户自动拦截
 
 </td>
 <td>
 
 ### 📊 数据分析
 - ✅ 使用统计仪表板
-- ✅ Token 消耗统计
-- ✅ Prompt 执行历史
-- ✅ AI 智能分析评估
-- ✅ 优化建议
+- ✅ Token、费用、响应时间统计
+- ✅ 每日趋势、小时分布、模型用量
+- ✅ Top Prompt 排行
+- ✅ Prompt 执行历史检索
+- ✅ AI 智能分析和优化建议
 
 </td>
 </tr>
 <tr>
 <td>
 
-### 📱 移动端适配
-- ✅ 响应式布局
-- ✅ 移动端导航菜单
-- ✅ 触屏友好交互
-- ✅ 适配各种屏幕尺寸
+### 💬 评论与评审
+- ✅ Prompt 评论线程
+- ✅ 评论、评审、建议三种类型
+- ✅ @ 用户提及
+- ✅ 按版本查看评论
+- ✅ 评审状态流转
+- ✅ 评论统计
 
 </td>
 <td>
 
 ### 🛠️ 管理后台
-- ✅ 用户管理
-- ✅ Prompt 管理
-- ✅ 模板库管理
-- ✅ 团队管理
-- ✅ 网站设置
+- ✅ 用户、Prompt、模板、团队管理
+- ✅ 网站设置和全局 AI 配置
+- ✅ 安全配置、敏感词和审计日志
+- ✅ API 配额管理
+- ✅ 用户/团队用量统计
+- ✅ 公开内容上下架控制
 
 </td>
 </tr>
 </table>
+
+---
+
+## 🧭 功能地图
+
+### 用户侧功能
+
+| 功能区域 | 页面/入口 | 主要能力 |
+| --- | --- | --- |
+| Prompt 列表 | `/prompts` | 搜索、标签筛选、收藏、公开/私有列表、进入编辑器 |
+| Prompt 编辑器 | `/editor/:id?` | 创建/编辑 Prompt、变量识别、运行调试、版本历史、文件引用、评论入口 |
+| Prompt Git 仓库 | `/repo/:id` | 分支管理、提交历史、Diff 查看、PR 查看与合并 |
+| A/B 测试与批量测试 | `/compare` | 多 Prompt 对比、批量用例、质量评估、测试历史、报告生成 |
+| Prompt 测试集 | 编辑器内测试面板 | smoke/full 测试集、基线版本、自动保存触发、运行记录 |
+| 模板库 | `/templates` | 分类浏览、搜索、收藏、评分、一键使用、自定义模板 |
+| 团队 | `/teams` | 创建团队、成员管理、邀请码加入、共享 Prompt、权限控制 |
+| 统计 | `/statistics` | 调用量、Token、费用、模型用量、Top Prompt、趋势图 |
+| 个人中心 | `/profile` | 个人资料、头像上传 |
+| 安全中心 | `/security` | 安全相关个人视图和审计信息 |
+| 设置 | `/settings` | 个人 AI 配置、多模型连接测试、API Key 管理 |
+
+### 管理员功能
+
+| 功能区域 | 页面/入口 | 主要能力 |
+| --- | --- | --- |
+| 用户管理 | `/admin/users` | 创建、编辑、禁用用户，调整角色 |
+| Prompt 管理 | `/admin/prompts` | 查看全站 Prompt、删除、公开状态管理 |
+| 模板管理 | `/admin/templates` | 创建、编辑、删除平台模板 |
+| 团队管理 | `/admin/teams` | 查看、编辑、删除团队和成员 |
+| 网站设置 | `/admin/site-settings` | 站点名称、描述、Logo、注册开关等配置 |
+| 全局 AI 配置 | `/admin/global-ai-config` | 默认模型、Base URL、全局 API Key、连接测试 |
+| 安全配置 | `/admin/security-config` | 内容审计策略、敏感词、脱敏配置 |
+| 审计日志 | `/admin/audit-logs` | 全站安全审计日志查询和统计 |
+| API 配额 | `/admin/quota` | 用户/团队调用限额、用量统计、配额删除 |
+
+### 后端 API 能力
+
+- `auth`：注册、登录、当前用户、个人资料、头像、API Key。
+- `prompt`：Prompt CRUD、列表搜索、版本历史、收藏、权限校验。
+- `run`：Prompt 执行、模型列表、个人用量。
+- `test-suite`：测试集 CRUD、运行测试集、运行历史。
+- `batch-test` / `abtest`：批量测试、A/B 对比、报告生成。
+- `branch` / `commit` / `diff` / `pull_request`：Prompt Git 工作流。
+- `template`：模板分类、列表、详情、使用、收藏、评分、自定义模板。
+- `team`：团队、成员、共享 Prompt、邀请码。
+- `comment`：评论、评审、建议、@ 提及、统计。
+- `statistics` / `execution_history`：用量趋势、模型统计、执行历史检索。
+- `security`：内容审计、敏感信息检测/脱敏、审计日志、安全配置。
+- `admin` / `quota` / `system` / `site`：后台管理、配额、全局 AI 配置、站点设置。
+- `file_upload`：文件上传、列表、详情、删除。
+- `prompt_analysis` / `optimization`：Prompt 智能分析和优化建议。
 
 ---
 
@@ -231,12 +290,18 @@ python -m pytest tests -v --tb=short
 <a href="img/login.png" target="_blank"><img src="img/login.png" alt="登录页面"/></a>
 
 ### 📝 Prompt 列表
-管理所有 Prompt，支持搜索、筛选、收藏
+管理所有 Prompt，支持搜索、筛选、收藏、公开/私有权限和团队共享入口
 
 <a href="img/prompt.png" target="_blank"><img src="img/prompt.png" alt="Prompt 列表"/></a>
 
+### ✍️ Prompt 工作台
+编辑、运行、调试 Prompt，管理变量、版本历史、测试集、评论和文件引用。
+
+### 🌿 Prompt Git 仓库
+为 Prompt 提供分支、提交、Diff 和 Pull Request 工作流，适合团队评审和合并变更。
+
 ### 🧪 A/B 测试
-对比两个 Prompt 的效果，支持批量测试
+对比多个 Prompt 的效果，支持批量测试、测试历史和质量报告
 
 <a href="img/abtest.png" target="_blank"><img src="img/abtest.png" alt="A/B 测试"/></a>
 
@@ -256,9 +321,18 @@ python -m pytest tests -v --tb=short
 <a href="img/do_history.png" target="_blank"><img src="img/do_history.png" alt="历史详情"/></a>
 
 ### ⚙️ API 配置管理
-管理多个 AI 配置，支持全局配置和个人配置
+管理多个 AI 配置，支持全局配置、个人配置、优先级策略和连接测试
 
 <a href="img/api.png" target="_blank"><img src="img/api.png" alt="API 配置"/></a>
+
+### 📊 使用统计
+查看调用量、Token、费用、模型用量、Top Prompt 和趋势图。
+
+### 👥 团队协作
+创建团队、管理成员、通过邀请码加入团队，并将 Prompt 共享给团队成员。
+
+### 🔒 安全与审计
+支持内容审计、敏感词管理、敏感信息检测/脱敏、审计日志和安全配置。
 
 ### 👥 用户管理（管理员）
 管理员可以管理所有用户和权限
@@ -285,9 +359,11 @@ Vue 3 + TypeScript + Vite
 ```
 FastAPI + Python 3.8+
 ├─ ORM: SQLModel
-├─ 数据库: MySQL 5.7+
+├─ 数据库: MySQL 5.7+（测试环境使用 SQLite）
 ├─ 认证: JWT
-├─ 加密: Cryptography
+├─ 加密: Cryptography / Fernet
+├─ AI SDK: OpenAI 兼容接口
+├─ 中间件: CORS / 安全响应头 / 请求日志 / 限流
 ├─ 测试: pytest + pytest-asyncio
 └─ 服务器: Uvicorn
 ```
@@ -301,8 +377,9 @@ ai-prompt-lab/
 │   │   ├── pages/        # 页面组件
 │   │   ├── components/   # 公共组件
 │   │   ├── store/        # Pinia 状态
-│   │   ├── api/          # API 封装
-│   │   └── router/       # 路由配置
+│   │   ├── api/          # API 封装（含 Prompt Git 接口）
+│   │   ├── router/       # 路由配置
+│   │   └── pages/admin/  # 管理后台页面
 │   └── public/           # 静态资源
 │       ├── logo.svg      # 主 Logo
 │       ├── logo-horizontal.svg  # 横版 Logo
@@ -310,14 +387,17 @@ ai-prompt-lab/
 │
 ├── backend/              # FastAPI 后端
 │   ├── app/
-│   │   ├── api/         # API 路由
+│   │   ├── api/         # API 路由（Prompt、测试、团队、后台、安全等）
 │   │   ├── models/      # 数据模型
-│   │   ├── services/    # 业务逻辑
-│   │   └── core/        # 核心配置
+│   │   ├── services/    # AI 调用、评估、测试运行等业务逻辑
+│   │   ├── core/        # 配置、数据库、安全依赖
+│   │   └── utils/       # 通用响应等工具
+│   ├── tests/           # 后端自动化测试
 │   ├── migrations/      # 数据库迁移
-│   ├── init_database.sql  # 初始化脚本
-│   └── DEPLOYMENT.md    # 部署文档
+│   └── init_database.sql  # 初始化脚本
 │
+├── docs/                # 功能设计和修复路线文档
+├── img/                 # README 截图资源
 └── logs/                # 开发日志
 ```
 
@@ -354,17 +434,39 @@ ai-prompt-lab/
 #### 🔒 安全特性（企业级）
 
 - API Key 使用 **Fernet 加密** 存储
-- 支持敏感词过滤
+- 支持敏感词过滤、敏感信息检测和脱敏
 - 完整的操作审计日志
 - 基于角色的权限控制（RBAC）
 - **禁用用户自动拦截** - 被禁用账号立即无法访问
-- **跨租户数据隔离** - 团队间数据完全隔离
+- **跨租户数据隔离** - 用户和团队数据按权限隔离
+- **API 配额治理** - 管理员可配置用户/团队调用限额
+
+#### 🌿 Prompt Git 工作流
+
+Prompt 不只保存单一版本，还支持类似 Git 的协作流程：
+
+1. 在 Prompt 仓库中创建分支。
+2. 在分支上提交 Prompt 内容变更。
+3. 查看提交历史和版本 Diff。
+4. 创建 Pull Request 发起评审。
+5. 合并 PR 后将变更进入目标分支。
+
+#### 🧪 Prompt 测试集回归
+
+测试集用于把 Prompt 的核心行为固化为可重复执行的回归用例：
+
+- `smoke`：轻量冒烟测试，适合保存后自动运行。
+- `full`：完整回归测试，适合发布前手动运行。
+- 支持 `previous_version` 和 `fixed_version` 两种基线模式。
+- 每个用例可配置变量、必含关键词、禁用关键词、期望输出、最低质量分和最大响应时间。
+- 运行结果会记录通过率、回归数、平均质量分、响应时间、Token 和费用。
 
 ### 详细文档
 
-- 📘 [部署指南](backend/DEPLOYMENT.md) - 生产环境部署
+- 📘 [部署说明](#-部署) - Docker 和生产环境部署入口
 - 📗 [API 文档](http://localhost:8000/docs) - FastAPI 自动生成
-- 📙 [全局 AI 配置说明](backend/GLOBAL_AI_CONFIG_GUIDE.md) - 配置详解
+- 🧪 [Prompt 测试集 MVP 设计](docs/PROMPT_TEST_SUITE_MVP.md) - 测试集回归能力设计
+- 🛠️ [项目修复与路线图](docs/PROJECT_REPAIR_AND_ROADMAP.md) - 已知修复和演进记录
 
 ---
 
@@ -428,11 +530,37 @@ python -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(16)).dec
 ### A/B 测试对比
 
 1. 访问 "A/B 测试" 页面
-2. 选择两个 Prompt 进行对比
+2. 选择两个或多个 Prompt 进行对比
 3. 选择对应的 AI 配置
 4. 输入测试用例
 5. 点击 "开始测试"
-6. 查看对比结果和统计数据
+6. 查看对比结果、质量评分和统计数据
+
+### 创建 Prompt 测试集
+
+1. 进入 Prompt 编辑器
+2. 打开测试集面板
+3. 创建 `smoke` 或 `full` 测试集
+4. 添加测试用例变量和断言条件
+5. 选择候选版本和基线版本运行
+6. 根据通过率和回归结果决定是否继续迭代
+
+### 使用 Prompt Git 协作
+
+1. 进入某个 Prompt 的仓库页面
+2. 创建或切换分支
+3. 提交 Prompt 内容变更
+4. 查看提交历史和 Diff
+5. 创建 Pull Request
+6. 评审后合并或关闭 PR
+
+### 团队共享 Prompt
+
+1. 访问 "团队" 页面创建团队
+2. 添加成员或生成邀请码
+3. 将 Prompt 共享到团队
+4. 为团队成员设置查看或编辑权限
+5. 在团队空间中协作维护 Prompt
 
 ---
 
@@ -450,14 +578,13 @@ docker run -d -p 8000:8000 -p 5173:5173 ai-prompt-lab
 
 ### 生产环境部署
 
-详见 [DEPLOYMENT.md](backend/DEPLOYMENT.md)
-
-包含：
-- Nginx 配置
-- HTTPS 设置
-- systemd 服务
-- 数据库备份
-- 性能优化
+生产部署建议至少包含：
+- 使用 MySQL 生产库并开启定期备份
+- 配置强随机 `SECRET_KEY`、`ENCRYPTION_MASTER_KEY` 和 `ENCRYPTION_SALT`
+- 配置 Nginx / HTTPS / 反向代理
+- 使用 systemd、Docker Compose 或云托管平台守护后端服务
+- 设置明确的 `CORS_ORIGINS` 和外部模型服务凭证
+- 为上传目录、日志目录和数据库备份配置持久化存储
 
 ---
 
