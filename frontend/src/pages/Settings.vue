@@ -196,7 +196,7 @@
         </el-form-item>
 
         <el-form-item label="引擎密钥 AUTH KEY">
-          <el-input v-model="formData.apiKey" type="password" placeholder="sk-..." show-password class="studio-input-minimal" />
+          <el-input v-model="formData.apiKey" type="password" :placeholder="editingConfig ? '留空则保持原密钥不变' : 'sk-...'" show-password class="studio-input-minimal" />
         </el-form-item>
 
         <el-form-item label="备注说明 DESCRIPTION (OPTIONAL)">
@@ -273,11 +273,14 @@ async function handleDelete(id: number) {
 }
 
 async function handleSave() {
-  if (!formData.name || !formData.baseUrl || !formData.apiKey) { ElMessage.warning('必填项不能为空'); return }
+  if (!formData.name || !formData.baseUrl || (!editingConfig.value && !formData.apiKey)) { ElMessage.warning('必填项不能为空'); return }
   saving.value = true
   try {
-    if (editingConfig.value) await configStore.updateAIConfig(editingConfig.value.id, formData)
-    else await configStore.addAIConfig(formData)
+    if (editingConfig.value) {
+      const updateData: any = { name: formData.name, baseUrl: formData.baseUrl, model: formData.model, description: formData.description }
+      if (formData.apiKey) updateData.apiKey = formData.apiKey
+      await configStore.updateAIConfig(editingConfig.value.id, updateData)
+    } else await configStore.addAIConfig(formData)
     ElMessage.success('配置已就绪')
     showAddDialog.value = false; resetForm()
   } finally { saving.value = false }

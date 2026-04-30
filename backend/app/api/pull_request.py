@@ -9,7 +9,7 @@ from app.models.user import User
 from app.services.pull_request_service import pull_request_service
 from app.services.version_control_service import version_control_service
 
-router = APIRouter(prefix="/prompt/{prompt_id}/pull-requests", tags=["pull_request"])
+router = APIRouter(prefix="/api/prompt/{prompt_id}/pull-requests", tags=["pull_request"])
 
 
 class PRCreate(BaseModel):

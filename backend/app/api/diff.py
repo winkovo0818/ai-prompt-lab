@@ -8,7 +8,7 @@ from app.models.user import User
 from app.services.diff_service import diff_service
 from app.services.version_control_service import version_control_service
 
-router = APIRouter(prefix="/prompt/{prompt_id}/diff", tags=["diff"])
+router = APIRouter(prefix="/api/prompt/{prompt_id}/diff", tags=["diff"])
 
 
 @router.get("", response_model=dict)

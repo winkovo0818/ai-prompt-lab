@@ -100,7 +100,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import GitBranchManager from '@/components/GitBranchManager.vue'
 import GitCommitHistory from '@/components/GitCommitHistory.vue'
@@ -108,9 +109,8 @@ import GitPRList from '@/components/GitPRList.vue'
 import GitDiffViewer from '@/components/GitDiffViewer.vue'
 import { createCommit, revertCommit, mergePullRequest, closePullRequest, getPullRequest } from '@/api/git'
 
-const props = defineProps<{
-  promptId: number
-}>()
+const route = useRoute()
+const promptId = Number(route.params.id)
 
 const currentBranchId = ref<number | undefined>()
 const showCommitDialog = ref(false)
@@ -139,7 +139,7 @@ const handleCommitSelect = (commit: any) => {
 
 const handlePRSelect = async (pr: any) => {
   try {
-    const res = await getPullRequest(props.promptId, pr.id)
+    const res = await getPullRequest(promptId, pr.id)
     selectedPR.value = res.data
     showPRDetailDialog.value = true
   } catch (err) {
@@ -157,7 +157,7 @@ const handleCommit = async () => {
     return
   }
   try {
-    await createCommit(props.promptId, {
+    await createCommit(promptId, {
       branch_id: currentBranchId.value,
       title: commitForm.value.title,
       content: commitForm.value.content
@@ -173,7 +173,7 @@ const handleCommit = async () => {
 const handleMergePR = async () => {
   if (!selectedPR.value) return
   try {
-    await mergePullRequest(props.promptId, selectedPR.value.id)
+    await mergePullRequest(promptId, selectedPR.value.id)
     ElMessage.success('PR 已合并')
     showPRDetailDialog.value = false
   } catch (err) {
@@ -184,7 +184,7 @@ const handleMergePR = async () => {
 const handleClosePR = async () => {
   if (!selectedPR.value) return
   try {
-    await closePullRequest(props.promptId, selectedPR.value.id)
+    await closePullRequest(promptId, selectedPR.value.id)
     ElMessage.success('PR 已关闭')
     showPRDetailDialog.value = false
   } catch (err) {

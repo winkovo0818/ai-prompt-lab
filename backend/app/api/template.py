@@ -202,8 +202,7 @@ async def use_template(
         content=template.content,
         description=template.description,
         tags=template.tags,
-        is_public=False,
-        is_favorite=False
+        is_public=False
     )
     
     db.add(new_prompt)

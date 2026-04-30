@@ -113,7 +113,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePromptStore } from '@/store/prompt'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Star, StarFilled, Plus, Grid, List, Memo } from '@element-plus/icons-vue'
+import { Search, Star, StarFilled, Plus, Memo } from '@element-plus/icons-vue'
 import Header from '@/components/Layout/Header.vue'
 import PromptCard from '@/components/PromptCard.vue'
 import { PromptItem } from '@/api'
@@ -125,8 +125,6 @@ const searchKeyword = ref('')
 const showFavoriteOnly = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(12)
-const viewMode = ref('grid')
-
 const statCards = computed(() => [
   { label: '项目总数', value: promptStore.total },
   { label: '星标收藏', value: promptStore.prompts.filter(p => p.is_favorite).length },
@@ -189,75 +187,4 @@ async function handleDelete(id: number) {
 }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
-</style>
-
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { usePromptStore } from '@/store/prompt'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Star, StarFilled, Plus, Grid, List, Memo } from '@element-plus/icons-vue'
-import Header from '@/components/Layout/Header.vue'
-import PromptCard from '@/components/PromptCard.vue'
-import { PromptItem } from '@/api'
-
-const router = useRouter()
-const promptStore = usePromptStore()
-
-const searchKeyword = ref('')
-const showFavoriteOnly = ref(false)
-const currentPage = ref(1)
-const pageSize = ref(16)
-const viewMode = ref('grid')
-
-const statCards = computed(() => [
-  { label: 'Total', value: promptStore.total },
-  { label: 'Starred', value: promptStore.prompts.filter(p => p.is_favorite).length },
-  { label: 'Public', value: promptStore.prompts.filter(p => p.is_public).length },
-  { label: 'Versions', value: promptStore.prompts.filter(p => p.version > 1).length }
-])
-
-onMounted(() => { loadPrompts() })
-async function loadPrompts() { await promptStore.fetchPrompts({ skip: (currentPage.value - 1) * pageSize.value, limit: pageSize.value, search: searchKeyword.value || undefined, is_favorite: showFavoriteOnly.value || undefined }) }
-function handleSearch() { currentPage.value = 1; loadPrompts() }
-function toggleFavorite() { showFavoriteOnly.value = !showFavoriteOnly.value; currentPage.value = 1; loadPrompts() }
-function handlePageChange() { loadPrompts() }
-function createPrompt() { router.push('/editor') }
-function handlePromptClick(prompt: PromptItem) { router.push(`/editor/${prompt.id}`) }
-async function handleToggleFavorite(id: number) { await promptStore.toggleFavorite(id) }
-function handleEdit(id: number) { router.push(`/editor/${id}`) }
-async function handleDuplicate(id: number) { 
-  try {
-    const fullPrompt = await promptStore.fetchPromptDetail(id)
-    if (!fullPrompt) return
-    const newPrompt = await promptStore.createPrompt({ title: `${fullPrompt.title} (Copy)`, content: fullPrompt.content, description: fullPrompt.description || '', tags: fullPrompt.tags || [], is_public: false })
-    ElMessage.success('已创建副本')
-    loadPrompts()
-  } catch (e) { ElMessage.error('复制失败') }
-}
-function handleVersions(id: number) { router.push({ path: `/editor/${id}`, query: { showVersions: 'true' } }) }
-async function handleDelete(id: number) {
-  try {
-    await ElMessageBox.confirm('确定要永久删除该项目吗？', '删除确认', { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'error', customClass: 'studio-message-box danger' })
-    await promptStore.deletePrompt(id)
-    loadPrompts()
-  } catch { }
-}
-</script>
-
-<style scoped>
-:deep(.studio-search-minimal .el-input__wrapper) {
-  @apply bg-white dark:bg-[#0d1117] !shadow-none border border-zinc-200 dark:border-zinc-800 rounded h-7 px-2 transition-all hover:border-zinc-400 dark:hover:border-zinc-600;
-}
-
-:deep(.studio-search-minimal .el-input__inner) {
-  @apply text-[11px];
-}
-
-.scrollbar-hide::-webkit-scrollbar { display: none; }
-
-:deep(.carbon-pagination-minimal) {
-  --el-pagination-button-bg-color: transparent;
-  @apply opacity-70 hover:opacity-100 transition-opacity;
-}
 </style>

@@ -97,8 +97,7 @@ export interface ABTestData {
   input_variables?: Record<string, string>
   file_variables?: Record<string, number>
   model?: string
-  api_base_url?: string
-  api_key?: string
+  ai_config_id?: number
 }
 
 export interface AIConfigData {

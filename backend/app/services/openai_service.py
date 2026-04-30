@@ -41,18 +41,30 @@ class OpenAIService:
         if not db or not user_id:
             raise ValueError("需要提供 db 和 user_id 参数")
         
+        ai_config_id = kwargs.get("ai_config_id")
+        ai_config = None
+        if ai_config_id:
+            statement = select(AIConfig).where(
+                AIConfig.id == ai_config_id,
+                (AIConfig.user_id == user_id) | (AIConfig.is_global == True)
+            ).limit(1)
+            ai_config = db.exec(statement).first()
+            if not ai_config:
+                raise ValueError("AI 配置不存在或无权访问")
+
         # 1. 查询用户配置的 AI Config（优先使用默认配置）
-        statement = select(AIConfig).where(
-            AIConfig.user_id == user_id,
-            AIConfig.is_default == True
-        ).limit(1)
-        ai_config = db.exec(statement).first()
-        
+        if not ai_config:
+            statement = select(AIConfig).where(
+                AIConfig.user_id == user_id,
+                AIConfig.is_default == True
+            ).limit(1)
+            ai_config = db.exec(statement).first()
+
         # 2. 如果没有默认配置，查找任意用户配置
         if not ai_config:
             statement = select(AIConfig).where(AIConfig.user_id == user_id).limit(1)
             ai_config = db.exec(statement).first()
-        
+
         # 3. 如果用户没有配置，查找全局配置（管理员配置的 is_global=True）
         if not ai_config:
             statement = select(AIConfig).where(AIConfig.is_global == True).limit(1)
@@ -85,9 +97,9 @@ class OpenAIService:
         
         # 创建 OpenAI 客户端
         client = AsyncOpenAI(
-            api_key=api_key,  # 使用解密后的 key
+            api_key=api_key,
             base_url=ai_config.base_url,
-            timeout=600000  
+            timeout=600.0
         )
         
         try:

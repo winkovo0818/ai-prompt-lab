@@ -202,35 +202,25 @@ CREATE TABLE IF NOT EXISTS `ai_configs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 配置表';
 
 -- ==========================================
--- 9. A/B 测试表
+-- 9. A/B 测试结果表
 -- ==========================================
 
-CREATE TABLE IF NOT EXISTS `ab_tests` (
+CREATE TABLE IF NOT EXISTS `abtest_results` (
     `id` INT NOT NULL AUTO_INCREMENT COMMENT '测试 ID',
     `user_id` INT NOT NULL COMMENT '用户 ID',
-    `name` VARCHAR(200) NOT NULL COMMENT '测试名称',
-    `description` TEXT NULL COMMENT '测试描述',
-    `prompt_a_id` INT NOT NULL COMMENT 'Prompt A ID',
-    `prompt_b_id` INT NOT NULL COMMENT 'Prompt B ID',
-    `config_a_id` INT NULL COMMENT 'Prompt A 使用的 AI 配置 ID',
-    `config_b_id` INT NULL COMMENT 'Prompt B 使用的 AI 配置 ID',
-    `test_cases` JSON NULL COMMENT '测试用例 JSON',
-    `results` JSON NULL COMMENT '测试结果 JSON',
-    `status` VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT '状态: pending/running/completed/failed',
+    `test_name` VARCHAR(200) NOT NULL COMMENT '测试名称',
+    `input_variables` JSON NULL COMMENT '输入变量 JSON',
+    `prompt_ids` JSON NOT NULL COMMENT '参与测试的 Prompt ID 列表',
+    `results` JSON NOT NULL COMMENT '测试结果 JSON',
+    `quality_scores` JSON NULL COMMENT '质量评分 JSON',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
     PRIMARY KEY (`id`),
-    INDEX `idx_ab_tests_user_id` (`user_id`),
-    INDEX `idx_ab_tests_status` (`status`),
-    INDEX `idx_ab_tests_created_at` (`created_at`),
+    INDEX `idx_abtest_results_user_id` (`user_id`),
+    INDEX `idx_abtest_results_created_at` (`created_at`),
 
-    CONSTRAINT `fk_ab_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_ab_prompt_a` FOREIGN KEY (`prompt_a_id`) REFERENCES `prompts` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_ab_prompt_b` FOREIGN KEY (`prompt_b_id`) REFERENCES `prompts` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_ab_config_a` FOREIGN KEY (`config_a_id`) REFERENCES `ai_configs` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_ab_config_b` FOREIGN KEY (`config_b_id`) REFERENCES `ai_configs` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='A/B 测试表';
+    CONSTRAINT `fk_abtest_results_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='A/B 测试结果表';
 
 -- ==========================================
 -- 10. 执行历史表
@@ -241,25 +231,27 @@ CREATE TABLE IF NOT EXISTS `execution_history` (
     `user_id` INT NOT NULL COMMENT '用户 ID',
     `prompt_id` INT NULL COMMENT 'Prompt ID',
     `prompt_content` TEXT NOT NULL COMMENT '执行时的 Prompt 内容',
+    `prompt_version` INT NOT NULL DEFAULT 1 COMMENT '执行时的 Prompt 版本',
     `variables` JSON NULL COMMENT '变量值 JSON',
-    `ai_config_id` INT NULL COMMENT 'AI 配置 ID',
-    `model` VARCHAR(100) NULL COMMENT '使用的模型',
-    `response` TEXT NULL COMMENT 'AI 响应',
-    `tokens_used` INT NULL COMMENT '使用的 Token 数',
-    `execution_time` REAL NULL COMMENT '执行时间（秒）',
-    `status` VARCHAR(20) NOT NULL DEFAULT 'success' COMMENT '状态: success/error/partial',
-    `error_message` TEXT NULL COMMENT '错误信息',
+    `final_prompt` TEXT NOT NULL COMMENT '替换变量后的最终 Prompt',
+    `model` VARCHAR(100) NOT NULL COMMENT '使用的模型',
+    `temperature` REAL NOT NULL DEFAULT 0.7 COMMENT '温度参数',
+    `max_tokens` INT NOT NULL DEFAULT 2000 COMMENT '最大输出 Token',
+    `output` TEXT NOT NULL COMMENT 'AI 输出',
+    `input_tokens` INT NOT NULL DEFAULT 0 COMMENT '输入 Token 数',
+    `output_tokens` INT NOT NULL DEFAULT 0 COMMENT '输出 Token 数',
+    `total_tokens` INT NOT NULL DEFAULT 0 COMMENT '总 Token 数',
+    `cost` REAL NOT NULL DEFAULT 0.0 COMMENT '估算成本',
+    `response_time` REAL NOT NULL DEFAULT 0.0 COMMENT '响应时间（秒）',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
 
     PRIMARY KEY (`id`),
     INDEX `idx_execution_history_user_id` (`user_id`),
     INDEX `idx_execution_history_prompt_id` (`prompt_id`),
-    INDEX `idx_execution_history_status` (`status`),
     INDEX `idx_execution_history_created_at` (`created_at`),
 
     CONSTRAINT `fk_exec_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_exec_prompt` FOREIGN KEY (`prompt_id`) REFERENCES `prompts` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_exec_config` FOREIGN KEY (`ai_config_id`) REFERENCES `ai_configs` (`id`) ON DELETE SET NULL
+    CONSTRAINT `fk_exec_prompt` FOREIGN KEY (`prompt_id`) REFERENCES `prompts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='执行历史表';
 
 -- ==========================================
@@ -268,20 +260,39 @@ CREATE TABLE IF NOT EXISTS `execution_history` (
 
 CREATE TABLE IF NOT EXISTS `quality_evaluations` (
     `id` INT NOT NULL AUTO_INCREMENT COMMENT '评估 ID',
-    `execution_id` INT NOT NULL COMMENT '执行记录 ID',
     `user_id` INT NOT NULL COMMENT '用户 ID',
-    `rating` INT NULL COMMENT '评分 1-5',
-    `feedback` TEXT NULL COMMENT '反馈内容',
-    `metrics` JSON NULL COMMENT '评估指标 JSON',
+    `test_type` VARCHAR(50) NOT NULL COMMENT '测试类型: abtest/batch/single',
+    `test_id` INT NULL COMMENT '测试记录 ID',
+    `prompt_id` INT NULL COMMENT 'Prompt ID',
+    `prompt_content` TEXT NOT NULL COMMENT 'Prompt 内容',
+    `output_content` TEXT NOT NULL COMMENT '输出内容',
+    `accuracy_score` REAL NOT NULL DEFAULT 0.0 COMMENT '准确性评分',
+    `relevance_score` REAL NOT NULL DEFAULT 0.0 COMMENT '相关性评分',
+    `fluency_score` REAL NOT NULL DEFAULT 0.0 COMMENT '流畅度评分',
+    `creativity_score` REAL NOT NULL DEFAULT 0.0 COMMENT '创意性评分',
+    `safety_score` REAL NOT NULL DEFAULT 0.0 COMMENT '安全性评分',
+    `overall_score` REAL NOT NULL DEFAULT 0.0 COMMENT '综合评分',
+    `evaluation_details` JSON NULL COMMENT '详细评价 JSON',
+    `safety_issues` JSON NULL COMMENT '安全问题 JSON',
+    `has_sensitive_content` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否包含敏感内容',
+    `response_time` REAL NOT NULL DEFAULT 0.0 COMMENT '响应时间',
+    `token_count` INT NOT NULL DEFAULT 0 COMMENT 'Token 数',
+    `cost` REAL NOT NULL DEFAULT 0.0 COMMENT '成本',
+    `cost_efficiency_score` REAL NOT NULL DEFAULT 0.0 COMMENT '成本效益评分',
+    `strengths` JSON NULL COMMENT '优点 JSON',
+    `weaknesses` JSON NULL COMMENT '缺点 JSON',
+    `suggestions` JSON NULL COMMENT '建议 JSON',
+    `evaluation_model` VARCHAR(100) NOT NULL COMMENT '评测模型',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
 
     PRIMARY KEY (`id`),
-    INDEX `idx_quality_evaluations_execution_id` (`execution_id`),
     INDEX `idx_quality_evaluations_user_id` (`user_id`),
-    INDEX `idx_quality_evaluations_rating` (`rating`),
+    INDEX `idx_quality_evaluations_prompt_id` (`prompt_id`),
+    INDEX `idx_quality_evaluations_test` (`test_type`, `test_id`),
+    INDEX `idx_quality_evaluations_created_at` (`created_at`),
 
-    CONSTRAINT `fk_qe_execution` FOREIGN KEY (`execution_id`) REFERENCES `execution_history` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_qe_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_qe_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_qe_prompt` FOREIGN KEY (`prompt_id`) REFERENCES `prompts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='质量评估表';
 
 -- ==========================================
@@ -435,16 +446,15 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
 CREATE TABLE IF NOT EXISTS `site_settings` (
     `id` INT NOT NULL AUTO_INCREMENT COMMENT '设置 ID',
     `site_name` VARCHAR(100) NOT NULL DEFAULT 'AI Prompt Lab' COMMENT '网站名称',
-    `site_description` TEXT NULL COMMENT '网站描述',
-    `logo_url` VARCHAR(500) NULL COMMENT 'Logo URL',
-    `allow_registration` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否允许注册',
-    `require_email_verification` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否需要邮箱验证',
-    `max_prompts_per_user` INT NOT NULL DEFAULT 1000 COMMENT '每用户最大 Prompt 数',
-    `max_api_configs_per_user` INT NOT NULL DEFAULT 10 COMMENT '每用户最大 API 配置数',
-    `enable_template_library` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用模板库',
-    `enable_ab_testing` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用 A/B 测试',
-    `default_prompt_visibility` VARCHAR(20) NOT NULL DEFAULT 'private' COMMENT '默认 Prompt 可见性: private/public',
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `site_description` VARCHAR(500) NOT NULL DEFAULT 'AI Prompt 智能工作台' COMMENT '网站描述',
+    `site_keywords` VARCHAR(200) NOT NULL DEFAULT 'AI, Prompt, 工作台' COMMENT '网站关键词',
+    `page_size` INT NOT NULL DEFAULT 20 COMMENT '分页大小',
+    `allow_register` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否允许注册',
+    `default_public` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Prompt 默认公开',
+    `enable_market` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用市场',
+    `enable_abtest` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用 A/B 测试',
+    `max_abtest_prompts` INT NOT NULL DEFAULT 5 COMMENT 'A/B 测试最大 Prompt 数',
+    `version` VARCHAR(20) NOT NULL DEFAULT '1.0.0' COMMENT '系统版本',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
     PRIMARY KEY (`id`)
@@ -457,16 +467,17 @@ CREATE TABLE IF NOT EXISTS `site_settings` (
 CREATE TABLE IF NOT EXISTS `teams` (
     `id` INT NOT NULL AUTO_INCREMENT COMMENT '团队 ID',
     `name` VARCHAR(100) NOT NULL COMMENT '团队名称',
-    `description` TEXT NULL COMMENT '团队描述',
+    `description` VARCHAR(500) NULL COMMENT '团队描述',
+    `avatar_url` VARCHAR(500) NULL COMMENT '团队头像 URL',
     `owner_id` INT NOT NULL COMMENT '所有者用户 ID',
-    `invite_code` VARCHAR(32) NULL UNIQUE COMMENT '邀请码',
-    `max_members` INT NOT NULL DEFAULT 50 COMMENT '最大成员数',
+    `is_public` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否公开团队',
+    `allow_member_invite` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否允许成员邀请',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
     PRIMARY KEY (`id`),
+    INDEX `idx_teams_name` (`name`),
     INDEX `idx_teams_owner` (`owner_id`),
-    INDEX `idx_teams_invite_code` (`invite_code`),
 
     CONSTRAINT `fk_teams_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='团队表';
@@ -502,9 +513,9 @@ CREATE TABLE IF NOT EXISTS `team_prompts` (
     `id` INT NOT NULL AUTO_INCREMENT COMMENT 'ID',
     `team_id` INT NOT NULL COMMENT '团队 ID',
     `prompt_id` INT NOT NULL COMMENT 'Prompt ID',
-    `permission` VARCHAR(20) NOT NULL DEFAULT 'read' COMMENT '权限: read/write',
     `shared_by` INT NOT NULL COMMENT '分享人用户 ID',
-    `shared_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '分享时间',
+    `permission` VARCHAR(20) NOT NULL DEFAULT 'view' COMMENT '权限: view/edit',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
 
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_team_prompt` (`team_id`, `prompt_id`),
@@ -524,15 +535,20 @@ CREATE TABLE IF NOT EXISTS `prompt_comments` (
     `id` INT NOT NULL AUTO_INCREMENT COMMENT '评论 ID',
     `prompt_id` INT NOT NULL COMMENT 'Prompt ID',
     `user_id` INT NOT NULL COMMENT '用户 ID',
-    `parent_id` INT NULL COMMENT '父评论 ID（用于回复）',
     `content` TEXT NOT NULL COMMENT '评论内容',
-    `like_count` INT NOT NULL DEFAULT 0 COMMENT '点赞数',
+    `mentioned_user_ids` JSON NULL COMMENT '提及用户 ID JSON',
+    `version` INT NULL COMMENT '关联版本号',
+    `parent_id` INT NULL COMMENT '父评论 ID（用于回复）',
+    `comment_type` VARCHAR(20) NOT NULL DEFAULT 'comment' COMMENT '评论类型',
+    `review_status` VARCHAR(20) NULL COMMENT '评审状态',
+    `is_edited` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已编辑',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `updated_at` DATETIME NULL COMMENT '更新时间',
 
     PRIMARY KEY (`id`),
     INDEX `idx_prompt_comments_prompt_id` (`prompt_id`),
     INDEX `idx_prompt_comments_user_id` (`user_id`),
+    INDEX `idx_prompt_comments_version` (`version`),
     INDEX `idx_prompt_comments_parent_id` (`parent_id`),
 
     CONSTRAINT `fk_pc_prompt` FOREIGN KEY (`prompt_id`) REFERENCES `prompts` (`id`) ON DELETE CASCADE,
@@ -541,54 +557,224 @@ CREATE TABLE IF NOT EXISTS `prompt_comments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Prompt 评论表';
 
 -- ==========================================
--- 23. 评论点赞表
+-- 23. 团队邀请表
 -- ==========================================
 
-CREATE TABLE IF NOT EXISTS `comment_likes` (
-    `id` INT NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `comment_id` INT NOT NULL COMMENT '评论 ID',
-    `user_id` INT NOT NULL COMMENT '用户 ID',
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '点赞时间',
+CREATE TABLE IF NOT EXISTS `team_invites` (
+    `id` INT NOT NULL AUTO_INCREMENT COMMENT '邀请 ID',
+    `team_id` INT NOT NULL COMMENT '团队 ID',
+    `invite_code` VARCHAR(50) NOT NULL UNIQUE COMMENT '邀请码',
+    `email` VARCHAR(100) NULL COMMENT '指定邀请邮箱',
+    `role` VARCHAR(20) NOT NULL DEFAULT 'viewer' COMMENT '加入角色',
+    `created_by` INT NOT NULL COMMENT '创建者用户 ID',
+    `expires_at` DATETIME NULL COMMENT '过期时间',
+    `max_uses` INT NOT NULL DEFAULT 1 COMMENT '最大使用次数',
+    `used_count` INT NOT NULL DEFAULT 0 COMMENT '已使用次数',
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
 
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_comment_like` (`comment_id`, `user_id`),
-    INDEX `idx_comment_likes_comment_id` (`comment_id`),
-    INDEX `idx_comment_likes_user_id` (`user_id`),
+    INDEX `idx_team_invites_team_id` (`team_id`),
+    INDEX `idx_team_invites_invite_code` (`invite_code`),
 
-    CONSTRAINT `fk_cl_comment` FOREIGN KEY (`comment_id`) REFERENCES `prompt_comments` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_cl_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论点赞表';
+    CONSTRAINT `fk_ti_team` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ti_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='团队邀请表';
 
 -- ==========================================
--- 24. 系统配额表
+-- 24. 上传文件表
 -- ==========================================
 
-CREATE TABLE IF NOT EXISTS `quotas` (
-    `id` INT NOT NULL AUTO_INCREMENT COMMENT '配额 ID',
+CREATE TABLE IF NOT EXISTS `uploaded_files` (
+    `id` INT NOT NULL AUTO_INCREMENT COMMENT '文件 ID',
     `user_id` INT NOT NULL COMMENT '用户 ID',
-    `quota_type` VARCHAR(50) NOT NULL COMMENT '配额类型: prompts/executions/api_calls',
-    `total` INT NOT NULL DEFAULT 0 COMMENT '总额度',
-    `used` INT NOT NULL DEFAULT 0 COMMENT '已使用',
-    `period` VARCHAR(20) NOT NULL DEFAULT 'monthly' COMMENT '周期: daily/weekly/monthly/unlimited',
-    `reset_at` DATETIME NULL COMMENT '重置时间',
+    `filename` VARCHAR(255) NOT NULL COMMENT '原始文件名',
+    `file_path` VARCHAR(500) NOT NULL COMMENT '服务器存储路径',
+    `file_type` VARCHAR(50) NOT NULL COMMENT '文件类型',
+    `mime_type` VARCHAR(100) NOT NULL COMMENT 'MIME 类型',
+    `file_size` INT NOT NULL COMMENT '文件大小',
+    `extracted_text` TEXT NULL COMMENT '提取文本',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否删除',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_user_quota_type` (`user_id`, `quota_type`),
-    INDEX `idx_quotas_user_id` (`user_id`),
-    INDEX `idx_quotas_type` (`quota_type`),
+    INDEX `idx_uploaded_files_user_id` (`user_id`),
+    INDEX `idx_uploaded_files_created_at` (`created_at`),
 
-    CONSTRAINT `fk_quotas_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配额表';
+    CONSTRAINT `fk_uploaded_files_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='上传文件表';
+
+-- ==========================================
+-- 25. API 配额表
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS `api_quotas` (
+    `id` INT NOT NULL AUTO_INCREMENT COMMENT '配额 ID',
+    `quota_type` VARCHAR(20) NOT NULL COMMENT '配额类型: user/team',
+    `target_id` INT NOT NULL COMMENT '目标 ID',
+    `requests_per_minute` INT NOT NULL DEFAULT 60 COMMENT '每分钟请求数',
+    `requests_per_hour` INT NOT NULL DEFAULT 1000 COMMENT '每小时请求数',
+    `requests_per_day` INT NOT NULL DEFAULT 10000 COMMENT '每天请求数',
+    `requests_per_month` INT NOT NULL DEFAULT 100000 COMMENT '每月请求数',
+    `tokens_per_day` INT NOT NULL DEFAULT 1000000 COMMENT '每日 Token 限制',
+    `tokens_per_month` INT NOT NULL DEFAULT 10000000 COMMENT '每月 Token 限制',
+    `cost_per_day` REAL NOT NULL DEFAULT 10.0 COMMENT '每日费用限制',
+    `cost_per_month` REAL NOT NULL DEFAULT 100.0 COMMENT '每月费用限制',
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `description` VARCHAR(500) NULL COMMENT '描述',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    PRIMARY KEY (`id`),
+    INDEX `idx_api_quotas_quota_type` (`quota_type`),
+    INDEX `idx_api_quotas_target_id` (`target_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='API 配额表';
+
+-- ==========================================
+-- 26. API 使用统计表
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS `api_usage` (
+    `id` INT NOT NULL AUTO_INCREMENT COMMENT '使用统计 ID',
+    `user_id` INT NOT NULL COMMENT '用户 ID',
+    `team_id` INT NULL COMMENT '团队 ID',
+    `usage_date` DATETIME NOT NULL COMMENT '统计日期',
+    `request_count` INT NOT NULL DEFAULT 0 COMMENT '请求次数',
+    `total_tokens` INT NOT NULL DEFAULT 0 COMMENT '总 Token 数',
+    `input_tokens` INT NOT NULL DEFAULT 0 COMMENT '输入 Token 数',
+    `output_tokens` INT NOT NULL DEFAULT 0 COMMENT '输出 Token 数',
+    `total_cost` REAL NOT NULL DEFAULT 0.0 COMMENT '总费用',
+    `model_usage_details` TEXT NULL COMMENT '模型使用详情 JSON',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    PRIMARY KEY (`id`),
+    INDEX `idx_api_usage_user_id` (`user_id`),
+    INDEX `idx_api_usage_team_id` (`team_id`),
+    INDEX `idx_api_usage_usage_date` (`usage_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='API 使用统计表';
+
+-- ==========================================
+-- 27. Prompt 测试集表
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS `prompt_test_suites` (
+    `id` INT NOT NULL AUTO_INCREMENT COMMENT '测试集 ID',
+    `user_id` INT NOT NULL COMMENT '用户 ID',
+    `prompt_id` INT NOT NULL COMMENT 'Prompt ID',
+    `name` VARCHAR(200) NOT NULL COMMENT '测试集名称',
+    `description` TEXT NULL COMMENT '描述',
+    `suite_type` VARCHAR(20) NOT NULL DEFAULT 'smoke' COMMENT '测试集类型',
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `auto_run_on_save` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '保存后自动运行',
+    `baseline_mode` VARCHAR(50) NOT NULL DEFAULT 'previous_version' COMMENT '基线模式',
+    `fixed_baseline_version` INT NULL COMMENT '固定基线版本',
+    `test_cases` JSON NOT NULL COMMENT '测试用例 JSON',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    PRIMARY KEY (`id`),
+    INDEX `idx_prompt_test_suites_user_id` (`user_id`),
+    INDEX `idx_prompt_test_suites_prompt_id` (`prompt_id`),
+
+    CONSTRAINT `fk_pts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_pts_prompt` FOREIGN KEY (`prompt_id`) REFERENCES `prompts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Prompt 测试集表';
+
+-- ==========================================
+-- 28. Prompt 测试运行表
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS `prompt_test_runs` (
+    `id` INT NOT NULL AUTO_INCREMENT COMMENT '测试运行 ID',
+    `suite_id` INT NOT NULL COMMENT '测试集 ID',
+    `user_id` INT NOT NULL COMMENT '用户 ID',
+    `prompt_id` INT NOT NULL COMMENT 'Prompt ID',
+    `candidate_version` INT NOT NULL COMMENT '候选版本',
+    `baseline_version` INT NULL COMMENT '基线版本',
+    `trigger_source` VARCHAR(50) NOT NULL DEFAULT 'manual' COMMENT '触发来源',
+    `status` VARCHAR(50) NOT NULL DEFAULT 'pending' COMMENT '状态',
+    `summary` JSON NOT NULL COMMENT '汇总 JSON',
+    `results` JSON NOT NULL COMMENT '结果 JSON',
+    `error` TEXT NULL COMMENT '错误信息',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `completed_at` DATETIME NULL COMMENT '完成时间',
+
+    PRIMARY KEY (`id`),
+    INDEX `idx_prompt_test_runs_suite_id` (`suite_id`),
+    INDEX `idx_prompt_test_runs_user_id` (`user_id`),
+    INDEX `idx_prompt_test_runs_prompt_id` (`prompt_id`),
+    INDEX `idx_prompt_test_runs_candidate_version` (`candidate_version`),
+    INDEX `idx_prompt_test_runs_baseline_version` (`baseline_version`),
+
+    CONSTRAINT `fk_ptr_suite` FOREIGN KEY (`suite_id`) REFERENCES `prompt_test_suites` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ptr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ptr_prompt` FOREIGN KEY (`prompt_id`) REFERENCES `prompts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Prompt 测试运行表';
+
+-- ==========================================
+-- 29. 批量测试结果表
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS `batch_test_results` (
+    `id` INT NOT NULL AUTO_INCREMENT COMMENT '批量测试 ID',
+    `user_id` INT NOT NULL COMMENT '用户 ID',
+    `test_name` VARCHAR(200) NOT NULL COMMENT '测试名称',
+    `prompt_id` INT NOT NULL COMMENT 'Prompt ID',
+    `test_cases` JSON NOT NULL COMMENT '测试用例 JSON',
+    `results` JSON NOT NULL COMMENT '结果 JSON',
+    `total_cases` INT NOT NULL DEFAULT 0 COMMENT '总用例数',
+    `success_count` INT NOT NULL DEFAULT 0 COMMENT '成功数',
+    `failure_count` INT NOT NULL DEFAULT 0 COMMENT '失败数',
+    `avg_response_time` REAL NOT NULL DEFAULT 0.0 COMMENT '平均响应时间',
+    `avg_token_count` INT NOT NULL DEFAULT 0 COMMENT '平均 Token 数',
+    `avg_cost` REAL NOT NULL DEFAULT 0.0 COMMENT '平均成本',
+    `avg_quality_score` REAL NOT NULL DEFAULT 0.0 COMMENT '平均质量分',
+    `model` VARCHAR(100) NOT NULL COMMENT '模型',
+    `temperature` REAL NOT NULL DEFAULT 0.7 COMMENT '温度参数',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `completed_at` DATETIME NULL COMMENT '完成时间',
+
+    PRIMARY KEY (`id`),
+    INDEX `idx_batch_test_results_user_id` (`user_id`),
+    INDEX `idx_batch_test_results_prompt_id` (`prompt_id`),
+
+    CONSTRAINT `fk_btr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_btr_prompt` FOREIGN KEY (`prompt_id`) REFERENCES `prompts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='批量测试结果表';
+
+-- ==========================================
+-- 30. 对比分析报告表
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS `comparison_reports` (
+    `id` INT NOT NULL AUTO_INCREMENT COMMENT '报告 ID',
+    `user_id` INT NOT NULL COMMENT '用户 ID',
+    `abtest_id` INT NOT NULL COMMENT 'A/B 测试 ID',
+    `winner_prompt_id` INT NULL COMMENT '获胜 Prompt ID',
+    `winner_reason` TEXT NOT NULL COMMENT '获胜原因',
+    `comparison_data` JSON NOT NULL COMMENT '对比数据 JSON',
+    `chart_data` JSON NOT NULL COMMENT '图表数据 JSON',
+    `summary` TEXT NOT NULL COMMENT '摘要',
+    `recommendations` JSON NOT NULL COMMENT '建议 JSON',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+    PRIMARY KEY (`id`),
+    INDEX `idx_comparison_reports_user_id` (`user_id`),
+    INDEX `idx_comparison_reports_abtest_id` (`abtest_id`),
+
+    CONSTRAINT `fk_cr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_cr_abtest` FOREIGN KEY (`abtest_id`) REFERENCES `abtest_results` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='对比分析报告表';
 
 -- ==========================================
 -- 初始数据
 -- ==========================================
 
 -- 插入默认网站设置
-INSERT INTO `site_settings` (`id`, `site_name`, `site_description`)
-VALUES (1, 'AI Prompt Lab', '企业级 AI 提示词管理和测试平台')
+INSERT INTO `site_settings` (`id`, `site_name`, `site_description`, `site_keywords`)
+VALUES (1, 'AI Prompt Lab', '企业级 AI 提示词管理和测试平台', 'AI, Prompt, 工作台')
 ON DUPLICATE KEY UPDATE `site_name` = VALUES(`site_name`);
 
 -- 插入默认管理员账户

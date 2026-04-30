@@ -189,9 +189,9 @@ cd backend
 mysql -u root -p prompt_lab < init_database.sql
 
 # 4. 配置环境变量
-cp .env .env
+cp .env.example .env
 # 编辑 .env 文件，设置数据库连接、密钥和 CORS
-# DATABASE_URL=mysql+pymysql://root:password@localhost:3306/prompt_lab
+# DATABASE_URL=mysql+pymysql://root:password@localhost:3306/prompt_lab?charset=utf8mb4
 
 # 5. 启动后端
 pip install -r requirements.txt
@@ -365,17 +365,21 @@ ai-prompt-lab/
 
 ```env
 # 数据库配置
-DATABASE_URL=mysql+pymysql://root:your_password@localhost:3306/prompt_lab
+DATABASE_URL=mysql+pymysql://root:your_password@localhost:3306/prompt_lab?charset=utf8mb4
 
 # 安全密钥（请使用强随机字符串）
 SECRET_KEY=your-secret-key-min-32-chars
-ENCRYPTION_KEY=your-encryption-key-32-chars
+
+# API Key 加密配置（请使用强随机字符串）
+ENCRYPTION_MASTER_KEY=your-encryption-master-key
+ENCRYPTION_SALT=your-base64-salt
 
 # CORS 配置
-ALLOWED_ORIGINS=http://localhost:5173,https://yourdomain.com
+CORS_ORIGINS=http://localhost:3001,http://localhost:5173,https://yourdomain.com
 
-# 可选：全局 AI 配置
-ENABLE_DEFAULT_AI=true
+# 可选：无用户/全局配置时的默认 AI 配置
+ENABLE_DEFAULT_AI=false
+DEFAULT_AI_PROVIDER=openai
 DEFAULT_AI_MODEL=gpt-3.5-turbo
 DEFAULT_AI_API_KEY=sk-your-api-key
 DEFAULT_AI_BASE_URL=https://api.openai.com/v1
@@ -387,8 +391,11 @@ DEFAULT_AI_BASE_URL=https://api.openai.com/v1
 # SECRET_KEY
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 
-# ENCRYPTION_KEY
+# ENCRYPTION_MASTER_KEY
 python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# ENCRYPTION_SALT
+python -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(16)).decode())"
 ```
 
 ---

@@ -10,7 +10,7 @@ from ..models.prompt import (
     PromptResponse, PromptListItem, UserPromptFavorite
 )
 from ..models.prompt_version import PromptVersion, PromptVersionResponse
-from ..models.team import TeamPrompt, TeamMember
+from ..models.team import Team, TeamPrompt, TeamMember
 from ..services.test_runner_service import TestRunnerService
 from ..utils.response import success_response, error_response
 

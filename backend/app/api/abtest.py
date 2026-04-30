@@ -105,7 +105,8 @@ async def create_abtest(
             prompt=merged_prompt,
             model=test_data.model,
             db=db,
-            user_id=current_user.id
+            user_id=current_user.id,
+            ai_config_id=test_data.ai_config_id
         )
         
         # 计算总响应时间

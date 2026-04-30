@@ -30,7 +30,9 @@ class ABTestCreate(SQLModel):
     test_name: str = Field(max_length=200)
     prompt_ids: List[int] = Field(min_items=2)
     input_variables: Optional[Dict] = None
+    file_variables: Optional[Dict[str, int]] = None
     model: str = "gpt-3.5-turbo"
+    ai_config_id: Optional[int] = None
     enable_evaluation: bool = True  # 是否启用AI评测
     generate_report: bool = True  # 是否生成对比报告
 

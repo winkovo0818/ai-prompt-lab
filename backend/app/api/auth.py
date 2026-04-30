@@ -289,13 +289,21 @@ async def upload_avatar(
 @router.get("/avatar/{filename}")
 async def get_avatar(filename: str):
     """获取头像文件"""
-    file_path = AVATAR_UPLOAD_DIR / filename
-    
-    if not file_path.exists():
+    safe_filename = Path(filename).name
+    if safe_filename != filename:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="头像不存在"
         )
-    
+
+    file_path = (AVATAR_UPLOAD_DIR / safe_filename).resolve()
+    avatar_dir = AVATAR_UPLOAD_DIR.resolve()
+
+    if avatar_dir not in file_path.parents or not file_path.exists() or not file_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="头像不存在"
+        )
+
     return FileResponse(file_path)
 

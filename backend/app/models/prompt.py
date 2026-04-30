@@ -19,7 +19,8 @@ class Prompt(SQLModel, table=True):
     is_public: bool = Field(default=False)
     
     version: int = Field(default=1)
-    
+    default_branch_id: Optional[int] = Field(default=None)
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     

@@ -8,7 +8,7 @@ from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.services.version_control_service import version_control_service
 
-router = APIRouter(prefix="/prompt/{prompt_id}/commits", tags=["commit"])
+router = APIRouter(prefix="/api/prompt/{prompt_id}/commits", tags=["commit"])
 
 
 class CommitCreate(BaseModel):

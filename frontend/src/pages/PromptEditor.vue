@@ -220,8 +220,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePromptStore } from '@/store/prompt'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
-import { runAPI, promptAPI, promptAnalysisAPI } from '@/api'
-import { ArrowLeft, Connection, Clock, CaretRight, Ticket, MagicStick, Setting, Delete, UserFilled, Loading, DocumentChecked } from '@element-plus/icons-vue'
+import { runAPI } from '@/api'
+import { ArrowLeft, Connection, Clock, CaretRight, Ticket, Setting, Delete, Loading } from '@element-plus/icons-vue'
 import { extractVariables } from '@/utils/markdown'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Header from '@/components/Layout/Header.vue'
@@ -229,8 +229,6 @@ import VariableInputWithFile from '@/components/VariableInputWithFile.vue'
 import ResultViewer from '@/components/ResultViewer.vue'
 import PromptCodeEditor from '@/components/PromptCodeEditor.vue'
 import PromptStructureGuide from '@/components/PromptStructureGuide.vue'
-import PromptTestPanel from '@/components/PromptTestPanel.vue'
-
 // Custom directive for auto-resizing textarea
 const vAutosize: Directive = {
   updated: (el) => {
@@ -257,8 +255,6 @@ const variableValues = ref<Record<string, string>>({})
 const fileVariableValues = ref<Record<string, number>>({})
 const executionResult = ref<any>(null)
 const versions = ref<any[]>([])
-const analyzing = ref(false)
-const analysisResult = ref<any>(null)
 const canEdit = ref(true)
 const teamShared = ref(false)
 const teamInfo = ref<any>(null)
@@ -326,16 +322,6 @@ async function handleRun() {
 const goBack = () => router.push('/prompts')
 const goToRepo = () => router.push(`/repo/${route.params.id}`)
 const handleCompareWithPrevious = () => router.push(`/repo/${route.params.id}?compare=true`)
-
-async function handleAnalyze() {
-  if (!formData.content) return
-  analyzing.value = true
-  try {
-    const res = await promptAnalysisAPI.analyze({ content: formData.content, title: formData.title }) as any
-    analysisResult.value = res.data.analysis
-    activeTab.value = 'analysis'
-  } catch (e) { ElMessage.error('分析失败') } finally { analyzing.value = false }
-}
 
 async function handleDelete() {
   try {

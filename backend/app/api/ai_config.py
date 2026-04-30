@@ -261,9 +261,10 @@ async def test_ai_config(
         )
     
     try:
-        # 创建 OpenAI 客户端（设置 120 秒超时）
+        api_key = EncryptionService.decrypt_api_key(config.api_key)
+
         client = AsyncOpenAI(
-            api_key=config.api_key,
+            api_key=api_key,
             base_url=config.base_url,
             timeout=120.0
         )

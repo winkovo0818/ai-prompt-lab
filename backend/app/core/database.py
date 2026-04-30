@@ -3,12 +3,24 @@ from typing import Generator
 from .config import settings
 
 # 导入所有模型确保表被创建
-from ..models.user import User
-from ..models.prompt import Prompt
-from ..models.prompt_version import PromptVersion
-from ..models.uploaded_file import UploadedFile
+from ..models.abtest import ABTestResult
+from ..models.ai_config import AIConfig
 from ..models.api_quota import ApiQuota, ApiUsage
-from ..models.test_suite import PromptTestSuite, PromptTestRun
+from ..models.audit_log import AuditLog, SecurityConfig, SensitiveWord
+from ..models.branch import PromptBranch
+from ..models.comment import PromptComment
+from ..models.commit import PromptCommit
+from ..models.execution_history import ExecutionHistory
+from ..models.prompt import Prompt, UserPromptFavorite
+from ..models.prompt_version import PromptVersion
+from ..models.pull_request import PromptPullRequest
+from ..models.quality_evaluation import ComparisonReport, QualityEvaluation
+from ..models.site_settings import SiteSettings
+from ..models.team import Team, TeamInvite, TeamMember, TeamPrompt
+from ..models.template import PromptTemplate, TemplateCategory, TemplateRating, UserTemplateFavorite
+from ..models.test_suite import PromptTestRun, PromptTestSuite
+from ..models.uploaded_file import UploadedFile
+from ..models.user import User
 
 # 创建数据库引擎（配置 utf8mb4 支持 emoji）
 engine = create_engine(

@@ -220,7 +220,15 @@ async function handleRunTest() {
   running.value = true; testResults.value = null
   try {
     const ai = configStore.aiConfigs.find(c => c.id === Number(testConfig.aiConfigId))
-    const res = await abtestAPI.create({ ...testConfig, model: ai?.model, api_base_url: ai?.baseUrl, api_key: ai?.apiKey })
+    const res = await abtestAPI.create({
+      test_name: testConfig.test_name,
+      prompt_ids: testConfig.prompt_ids,
+      input_variables: testConfig.input_variables,
+      file_variables: testConfig.file_variables,
+      enable_evaluation: testConfig.enable_evaluation,
+      model: ai?.model,
+      ai_config_id: ai?.id
+    })
     testResults.value = res.data; ElMessage.success('测试运行成功')
   } catch { ElMessage.error('测试启动失败') } finally { running.value = false }
 }
